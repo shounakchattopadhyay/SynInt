@@ -7,7 +7,7 @@ There is abundant interest in assessing the joint effects of multiple exposures 
 
 # Install the R package (works on Linux, macOS, and Windows)
 
-First install the 'devtools' package in R:
+First install the 'devtools' package in R. If using Windows, install Rtools from here: https://cran.r-project.org/bin/windows/Rtools/rtools40.html before installing 'devtools'.
 
 ```
 install.packages("devtools")
@@ -15,5 +15,6 @@ install.packages("devtools")
 Next, install the package:
 
 ```
+library(devtools)
 install_github("shounakchattopadhyay/SynInt")
 ```
