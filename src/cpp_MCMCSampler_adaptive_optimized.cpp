@@ -17,8 +17,7 @@ double random_normal(float s){
 }
 
 // [[Rcpp:export]]
-
-double sigmasq_sampler(vec R, int n) {
+double sigmasq_sampler(arma::vec R, int n) {
   
   double sigma_sq = 1.0;
   
@@ -31,8 +30,7 @@ double sigmasq_sampler(vec R, int n) {
 }
 
 // [[Rcpp:export]]
-
-double intercept_sampler(vec R, int n, double sigma_sq) {
+double intercept_sampler(arma::vec R, int n, double sigma_sq) {
   
   double meanR = mean(R);
   
@@ -46,60 +44,58 @@ double intercept_sampler(vec R, int n, double sigma_sq) {
 }
 
 // [[Rcpp::export]]
-
-vec maineffects_sampler(vec R, mat X, mat Psi_inv, double sigma_sq){
+arma::vec maineffects_sampler(arma::vec R, arma::mat X, arma::mat Psi_inv, double sigma_sq){
   
-  mat M1 = ((X.t()) * X)/sigma_sq;
-  mat M2 = chol(Psi_inv + M1);
-  mat M2inv = inv(M2);
-  mat betaVar = M2inv * (M2inv.t());
+  arma::mat M1 = ((X.t()) * X)/sigma_sq;
+  arma::mat M2 = chol(Psi_inv + M1);
+  arma::mat M2inv = inv(M2);
+  arma::mat betaVar = M2inv * (M2inv.t());
   
-  vec betaMean = betaVar * ((X.t() * R)/sigma_sq);
+  arma::vec betaMean = betaVar * ((X.t() * R)/sigma_sq);
   
-  mat sampled_ME_coeff = mvnrnd(betaMean, betaVar, 1);
+  arma::mat sampled_ME_coeff = mvnrnd(betaMean, betaVar, 1);
   return sampled_ME_coeff.col(0);
   
 }
 
 // [[Rcpp::export]]
-
-double pot_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, mat S1, mat S2, double sigma_sq){
+double pot_MALA(arma::vec R, arma::mat X1, arma::mat X2, arma::vec param, double tau1sq, double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq){
   
   int M = X1.n_cols;
   int n = X1.n_rows;
   
-  vec theta1 = param(span(0, M-1));
-  vec theta2 = param(span(M, (2*M)- 1));
-  vec phi1 = param(span((2*M), (3*M)-1));
-  vec phi2 = param(span((3*M), (4*M) - 1));
+  arma::vec theta1 = param(span(0, M-1));
+  arma::vec theta2 = param(span(M, (2*M)- 1));
+  arma::vec phi1 = param(span((2*M), (3*M)-1));
+  arma::vec phi2 = param(span((3*M), (4*M) - 1));
   
   double kappa = param((4*M));
   double pen_param = exp(kappa);
     
-  vec mainpart11 = X1 * theta1;
-  vec mainpart12 = X2 * phi1;
-  vec mainpart21 = X1 * theta2;
-  vec mainpart22 = X2 * phi2;
+  arma::vec mainpart11 = X1 * theta1;
+  arma::vec mainpart12 = X2 * phi1;
+  arma::vec mainpart21 = X1 * theta2;
+  arma::vec mainpart22 = X2 * phi2;
   
-  vec Pfn1 = square(mainpart11);
-  vec Pfn2 = square(mainpart12);
-  vec Pfn = Pfn1 % Pfn2;
+  arma::vec Pfn1 = square(mainpart11);
+  arma::vec Pfn2 = square(mainpart12);
+  arma::vec Pfn = Pfn1 % Pfn2;
     
-  vec Nfn1 = square(mainpart21);
-  vec Nfn2 = square(mainpart22);
-  vec Nfn = Nfn1 % Nfn2;
+  arma::vec Nfn1 = square(mainpart21);
+  arma::vec Nfn2 = square(mainpart22);
+  arma::vec Nfn = Nfn1 % Nfn2;
     
-  vec h = Pfn - Nfn;
+  arma::vec h = Pfn - Nfn;
   
   double pot_lik = accu(square(R - h))/(2*sigma_sq);
   
-  mat c_11mat = 0.5*(theta1.t() * (S1 * theta1));
+  arma::mat c_11mat = 0.5*(theta1.t() * (S1 * theta1));
   double c_11 = c_11mat(0,0);
-  mat c_21mat = 0.5*(theta2.t() * (S1 * theta2));
+  arma::mat c_21mat = 0.5*(theta2.t() * (S1 * theta2));
   double c_21 = c_21mat(0,0);
-  mat c_12mat = 0.5*(phi1.t() * (S2 * phi1));
+  arma::mat c_12mat = 0.5*(phi1.t() * (S2 * phi1));
   double c_12 = c_12mat(0,0);
-  mat c_22mat = 0.5*(phi2.t() * (S2 * phi2));
+  arma::mat c_22mat = 0.5*(phi2.t() * (S2 * phi2));
   double c_22 = c_22mat(0,0);
   
   // penalty_term = mean(mainpart1^2 * mainpart2^2)
@@ -125,50 +121,49 @@ double pot_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, 
 }
 
 // [[Rcpp::export]]
-
-vec grad_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, mat S1, mat S2, double sigma_sq){
+arma::vec grad_MALA(arma::vec R, arma::mat X1, arma::mat X2, arma::vec param, double tau1sq, double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq){
   
   int M = X1.n_cols;
   int n = X1.n_rows;
   
-  vec theta1 = param(span(0, M-1));
-  vec theta2 = param(span(M, (2*M)- 1));
-  vec phi1 = param(span((2*M), (3*M)-1));
-  vec phi2 = param(span((3*M), (4*M) - 1));
+  arma::vec theta1 = param(span(0, M-1));
+  arma::vec theta2 = param(span(M, (2*M)- 1));
+  arma::vec phi1 = param(span((2*M), (3*M)-1));
+  arma::vec phi2 = param(span((3*M), (4*M) - 1));
   
   double kappa = param((4*M));
   double pen_param = exp(kappa);
   
-  vec mainpart11 = X1 * theta1;
-  vec mainpart12 = X2 * phi1;
-  vec mainpart21 = X1 * theta2;
-  vec mainpart22 = X2 * phi2;
+  arma::vec mainpart11 = X1 * theta1;
+  arma::vec mainpart12 = X2 * phi1;
+  arma::vec mainpart21 = X1 * theta2;
+  arma::vec mainpart22 = X2 * phi2;
   
-  vec Pfn1 = square(mainpart11);
-  vec Pfn2 = square(mainpart12);
-  vec Pfn = Pfn1 % Pfn2;
+  arma::vec Pfn1 = square(mainpart11);
+  arma::vec Pfn2 = square(mainpart12);
+  arma::vec Pfn = Pfn1 % Pfn2;
   
-  vec Nfn1 = square(mainpart21);
-  vec Nfn2 = square(mainpart22);
-  vec Nfn = Nfn1 % Nfn2;
+  arma::vec Nfn1 = square(mainpart21);
+  arma::vec Nfn2 = square(mainpart22);
+  arma::vec Nfn = Nfn1 % Nfn2;
   
-  vec h = Pfn - Nfn;
+  arma::vec h = Pfn - Nfn;
   
   // Gradient from likelihood
   
-  vec v = h - R;
+  arma::vec v = h - R;
     
-  vec grad_lik_part11 = X1.t() * (Pfn2 % (mainpart11 % v));
-  vec grad_lik_part21 = - X1.t() * (Nfn2 % (mainpart21 % v));
-  vec grad_lik_part12 = X2.t() * (Pfn1 % (mainpart12 % v));
-  vec grad_lik_part22 = - X1.t() * (Nfn1 % (mainpart22 % v));
+  arma::vec grad_lik_part11 = X1.t() * (Pfn2 % (mainpart11 % v));
+  arma::vec grad_lik_part21 = - X1.t() * (Nfn2 % (mainpart21 % v));
+  arma::vec grad_lik_part12 = X2.t() * (Pfn1 % (mainpart12 % v));
+  arma::vec grad_lik_part22 = - X1.t() * (Nfn1 % (mainpart22 % v));
   
-  vec grad_lik = (2/sigma_sq)*join_cols(grad_lik_part11,
+  arma::vec grad_lik = (2/sigma_sq)*join_cols(grad_lik_part11,
                                         grad_lik_part21,
                                         grad_lik_part12,
                                         grad_lik_part22);
     
-  vec grad_prior = join_cols((S1 * theta1) / tau1sq,
+  arma::vec grad_prior = join_cols((S1 * theta1) / tau1sq,
                              (S1 * theta2) / tau2sq,
                              (S2 * phi1) / tau1sq,
                              (S2 * phi2) / tau2sq);
@@ -204,10 +199,10 @@ vec grad_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, ma
   double int_N1 = mean(Nfn1);
   double int_N2 = mean(Nfn2);
       
-  mat mat1 = (X1.t() * X1) / n ;
-  mat mat2 = (X2.t() * X2) / n ;
+  arma::mat mat1 = (X1.t() * X1) / n ;
+  arma::mat mat2 = (X2.t() * X2) / n ;
       
-  vec grad_prior_penalty = 2 * join_cols((int_P2 * int_N1 * int_N2) * (mat1 * theta1),
+  arma::vec grad_prior_penalty = 2 * join_cols((int_P2 * int_N1 * int_N2) * (mat1 * theta1),
                                      (int_P1 * int_P2 * int_N2) * (mat1 * theta2),
                                      (int_P1 * int_N1 * int_N2) * (mat2 * phi1),
                                      (int_P1 * int_P2 * int_N1) * (mat1 * phi2));
@@ -216,13 +211,13 @@ vec grad_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, ma
 // # grad_prior_penalty = (2/n^2)*c(2*sum(Pfn*Nfn)*t(X) %*% (mainpart1 * Nfn),
 // #                                sum(Pfn*Nfn)*t(X) %*% Pfn)
       
-  vec grad_total = grad_lik + grad_prior + 
+  arma::vec grad_total = grad_lik + grad_prior + 
                (0.5*grad_prior_penalty / (pen_param + penalty_term));
         
 // Construct gradient wrt pen_param
 
   double grad_pen = pen_param - 1.0 + ((0.5/(1.0 + (penalty_term / pen_param))));
-  vec grad_pen_vec(1, fill::zeros);
+  arma::vec grad_pen_vec(1, fill::zeros);
   grad_pen_vec(0) = grad_pen;
           
   return join_cols(grad_total, grad_pen_vec);
@@ -230,21 +225,20 @@ vec grad_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, ma
 }
 
 //[[Rcpp::export]]
-
-Rcpp::List sq_sampler(vec R, mat X1, mat X2, double tau1sq, 
-                      double tau2sq, mat S1, mat S2, double sigma_sq,
-                      vec old_param, double eps_MALA,
+Rcpp::List sq_sampler(arma::vec R, arma::mat X1, arma::mat X2, double tau1sq, 
+                      double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq,
+                      arma::vec old_param, double eps_MALA,
                       double c_HMC, int L_HMC){
   
   int M = old_param.n_elem;
   
-  vec new_param = old_param;
-  mat sig1;
+  arma::vec new_param = old_param;
+  arma::mat sig1;
   sig1.eye(M,M);
-  vec new_rho = mvnrnd(vec(M, fill::zeros), sig1, 1);
+  arma::vec new_rho = mvnrnd(vec(M, fill::zeros), sig1, 1);
   
-  vec current_param = new_param;
-  vec current_rho = new_rho;
+  arma::vec current_param = new_param;
+  arma::vec current_rho = new_rho;
   
   //Half step of momentum
   
@@ -289,9 +283,9 @@ Rcpp::List sq_sampler(vec R, mat X1, mat X2, double tau1sq,
   double U1 = randu();
   double energy_diff1 = exp(current_U - new_U + current_K - new_K);
   int sample_accept = 0;
-  vec param_accept(M, fill::zeros);
+  arma::vec param_accept(M, fill::zeros);
   
-  vec ediff(1, fill::zeros);
+  arma::vec ediff(1, fill::zeros);
   ediff(0) = energy_diff1;
   
   if(ediff.is_finite() == TRUE){
@@ -324,41 +318,40 @@ Rcpp::List sq_sampler(vec R, mat X1, mat X2, double tau1sq,
 }
 
 // [[Rcpp::export]]
-
-Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE_list,
-                                               vec eps_MALA, double c_HMC, int L_HMC, int MC,
+Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list,
+                                               arma::vec eps_MALA, double c_HMC, int L_HMC, int MC,
                                                int n, int p, int p_cov,
-                                               mat SigmaME, mat SigmaME_inv,
-                                               mat SigmaInt, mat SigmaInt_inv,
+                                               arma::mat SigmaME, arma::mat SigmaME_inv,
+                                               arma::mat SigmaInt, arma::mat SigmaInt_inv,
                                                int ME_nspl, int IE_nspl,
-                                               mat var_cov, int cutoff,
-                                               mat map_k_to_uv){
+                                               arma::mat var_cov, int cutoff,
+                                               arma::mat map_k_to_uv){
   //Define storage matrices
   
-  vec alpha_stor(MC, fill::zeros);
-  vec sigmasq_stor(MC, fill::ones);
+  arma::vec alpha_stor(MC, fill::zeros);
+  arma::vec sigmasq_stor(MC, fill::ones);
   
-  mat ME_coeff_stor(MC, ME_nspl*p, fill::zeros);
-  mat ME_scale_stor(MC, p, fill::ones);
+  arma::mat ME_coeff_stor(MC, ME_nspl*p, fill::zeros);
+  arma::mat ME_scale_stor(MC, p, fill::ones);
   
   int K = p*(p-1)/2;
   // int IE_nbasis = IE_nspl * IE_nspl;
   
-  cube IE_pos_theta1(MC, IE_nspl, K, fill::zeros);
-  cube IE_neg_theta2(MC, IE_nspl, K, fill::zeros);
-  cube IE_pos_phi1(MC, IE_nspl, K, fill::zeros);
-  cube IE_neg_phi2(MC, IE_nspl, K, fill::zeros);
+  arma::cube IE_pos_theta1(MC, IE_nspl, K, fill::zeros);
+  arma::cube IE_neg_theta2(MC, IE_nspl, K, fill::zeros);
+  arma::cube IE_pos_phi1(MC, IE_nspl, K, fill::zeros);
+  arma::cube IE_neg_phi2(MC, IE_nspl, K, fill::zeros);
   
-  mat IE_scale_tausq1(MC, K, fill::ones);
-  mat IE_scale_tausq2(MC, K, fill::ones);
-  mat IE_scale_a(MC, K, fill::ones);
-  mat IE_scale_b(MC, K, fill::ones);
+  arma::mat IE_scale_tausq1(MC, K, fill::ones);
+  arma::mat IE_scale_tausq2(MC, K, fill::ones);
+  arma::mat IE_scale_a(MC, K, fill::ones);
+  arma::mat IE_scale_b(MC, K, fill::ones);
   
-  mat IE_pen(MC, K, fill::ones);
+  arma::mat IE_pen(MC, K, fill::ones);
   
-  mat all_interactions(n, K, fill::zeros);
+  arma::mat all_interactions(n, K, fill::zeros);
   
-  mat cov_effect_stor(MC, p_cov, fill::zeros);
+  arma::mat cov_effect_stor(MC, p_cov, fill::zeros);
   
   for(int k=0; k<K; ++k){
     
@@ -369,28 +362,28 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
       
     // Initialize rank 1 components
       
-    (IE_pos_theta1.slice(k)).row(0) = mvnrnd(vec(IE_nspl, fill::zeros),
+    (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
                                              0.1*SigmaInt).t();
-    (IE_neg_theta2.slice(k)).row(0) = mvnrnd(vec(IE_nspl, fill::zeros),
+    (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
                                              0.1*SigmaInt).t();
-    (IE_pos_phi1.slice(k)).row(0) = mvnrnd(vec(IE_nspl, fill::zeros),
+    (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
                                              0.1*SigmaInt).t();
-    (IE_neg_phi2.slice(k)).row(0) = mvnrnd(vec(IE_nspl, fill::zeros),
+    (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
                                              0.1*SigmaInt).t();
     
-    vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
-    vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
-    vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
-    vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+    arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+    arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+    arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+    arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
     
-    vec pos_part = pos_part1 % pos_part2;
-    vec neg_part = neg_part1 % neg_part2;
+    arma::vec pos_part = pos_part1 % pos_part2;
+    arma::vec neg_part = neg_part1 % neg_part2;
     
     all_interactions.col(k) = pos_part - neg_part;
     
   }
   
-  mat accept_MALA(MC, K, fill::zeros);
+  arma::mat accept_MALA(MC, K, fill::zeros);
   accept_MALA.row(0) = vec(K, fill::ones).t();
   
   //Begin MCMC sampling. 
@@ -399,7 +392,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
     
     //Sample (\alpha, \sigma^2) | - 
     
-    vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
+    arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
                           (sum(all_interactions, 1)) +
                           (Z * cov_effect_stor.row(m-1).t()));
     
@@ -410,16 +403,16 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
     
     //Sample \beta = ME coefficient | - ####
     
-    vec R_ME = y - ((alpha_stor(m)*vec(n, fill::ones)) +
+    arma::vec R_ME = y - ((alpha_stor(m)*arma::vec(n, fill::ones)) +
                     (sum(all_interactions, 1)) +
                     (Z * cov_effect_stor.row(m-1).t()));
     
-    mat mat_ME_scales(p, p, fill::zeros);
+    arma::mat mat_ME_scales(p, p, fill::zeros);
     mat_ME_scales.diag() = ME_scale_stor.row(m-1).t();
     
-    mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
+    arma::mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
     
-    vec sampler_ME = maineffects_sampler(R_ME, 
+    arma::vec sampler_ME = maineffects_sampler(R_ME, 
                                          ME_mat, 
                                          Psi_ME_inv,
                                          sigmasq_stor(m));
@@ -428,13 +421,13 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
     
     //Sample \lambda_j = scale of \beta_j ####
     
-    vec qf_stor(p, fill::zeros);
+    arma::vec qf_stor(p, fill::zeros);
     
     for(int j=0; j<p; ++j){
       
-      vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
+      arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
       /////DONE TILL HERE/////
-      mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
+      arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
       qf_stor(j) = qf_j(0,0);
       ME_scale_stor(m,j) = random_gamma(0.5 + (0.5*ME_nspl))/(0.5 + (0.5*qf_stor(j)));
       
@@ -451,20 +444,20 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
       
       // Remove index k and sum up other interactions
       
-      mat dummy_all_int = all_interactions;
+      arma::mat dummy_all_int = all_interactions;
       dummy_all_int.shed_col(k);
-      vec all_interaction_sum_notk = sum(dummy_all_int, 1);
+      arma::vec all_interaction_sum_notk = sum(dummy_all_int, 1);
       
       // Sample interaction k
       
-      vec R_IE_k = y - ((alpha_stor(m)*vec(n, fill::ones)) +
+      arma::vec R_IE_k = y - ((alpha_stor(m)*arma::vec(n, fill::ones)) +
                        (ME_mat * ME_coeff_stor.row(m).t()) +
                        (all_interaction_sum_notk) +
                        (Z * cov_effect_stor.row(m-1).t()));
       
       // Define old_param for sampling
       
-      vec old_param((4*IE_nspl + 1), fill::zeros);
+      arma::vec old_param((4*IE_nspl + 1), fill::zeros);
       
       old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
       old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
@@ -488,9 +481,9 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
                                         L_HMC);
       
       accept_MALA(m,k) = sq_MALA_k["accept"];
-      vec whole_coeff = sq_MALA_k["sampled_param"];
+      arma::vec whole_coeff = sq_MALA_k["sampled_param"];
       int len_psi = (whole_coeff.n_elem - 1)/4;
-      vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
+      arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
       
       IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
       IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
@@ -500,33 +493,33 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
       
       // Update the interaction matrix
       
-      vec Ppart1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(m).t());
-      vec Ppart2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(m).t());
-      vec Npart1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(m).t());
-      vec Npart2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(m).t());
+      arma::vec Ppart1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(m).t());
+      arma::vec Ppart2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(m).t());
+      arma::vec Npart1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(m).t());
+      arma::vec Npart2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(m).t());
       
-      vec Ppart = Ppart1 % Ppart2;
-      vec Npart = Npart1 % Npart2;
+      arma::vec Ppart = Ppart1 % Ppart2;
+      arma::vec Npart = Npart1 % Npart2;
       
       all_interactions.col(k) = Ppart - Npart; 
       
       // Update other parameters
       
-      mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
+      arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
         IE_pos_theta1.slice(k).row(m).t()));
       double c_1k1 = c_1k1_mat(0,0);
       
-      mat c_1k2_mat = 0.5*(IE_pos_phi1.slice(k).row(m) * (SigmaInt_inv *
+      arma::mat c_1k2_mat = 0.5*(IE_pos_phi1.slice(k).row(m) * (SigmaInt_inv *
         IE_pos_phi1.slice(k).row(m).t()));
       double c_1k2 = c_1k2_mat(0,0);
       
       double c_1k = c_1k1 + c_1k2;
       
-      mat c_2k1_mat = 0.5*(IE_neg_theta2.slice(k).row(m) * (SigmaInt_inv *
+      arma::mat c_2k1_mat = 0.5*(IE_neg_theta2.slice(k).row(m) * (SigmaInt_inv *
         IE_neg_theta2.slice(k).row(m).t()));
       double c_2k1 = c_2k1_mat(0,0);
       
-      mat c_2k2_mat = 0.5*(IE_neg_phi2.slice(k).row(m) * (SigmaInt_inv *
+      arma::mat c_2k2_mat = 0.5*(IE_neg_phi2.slice(k).row(m) * (SigmaInt_inv *
         IE_neg_phi2.slice(k).row(m).t()));
       double c_2k2 = c_2k2_mat(0,0);
       
@@ -550,9 +543,9 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE
     
     //Sample covariate effects (\beta_{cov}) | - #####
     
-    vec R_cov = y - ((ME_mat * ME_coeff_stor.row(m).t()) +
+    arma::vec R_cov = y - ((ME_mat * ME_coeff_stor.row(m).t()) +
       (sum(all_interactions, 1)) +
-      (alpha_stor(m)*vec(n, fill::ones)));
+      (alpha_stor(m)*arma::vec(n, fill::ones)));
     
     cov_effect_stor.row(m) = (mvnrnd(var_cov * (Z.t() * R_cov),
                               sigmasq_stor(m)*var_cov)).t();

@@ -34,72 +34,72 @@ BEGIN_RCPP
 END_RCPP
 }
 // maineffects_sampler
-vec maineffects_sampler(vec R, mat X, mat Psi_inv, double sigma_sq);
+arma::vec maineffects_sampler(arma::vec R, arma::mat X, arma::mat Psi_inv, double sigma_sq);
 RcppExport SEXP _SynInt_maineffects_sampler(SEXP RSEXP, SEXP XSEXP, SEXP Psi_invSEXP, SEXP sigma_sqSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< mat >::type Psi_inv(Psi_invSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Psi_inv(Psi_invSEXP);
     Rcpp::traits::input_parameter< double >::type sigma_sq(sigma_sqSEXP);
     rcpp_result_gen = Rcpp::wrap(maineffects_sampler(R, X, Psi_inv, sigma_sq));
     return rcpp_result_gen;
 END_RCPP
 }
 // pot_MALA
-double pot_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, mat S1, mat S2, double sigma_sq);
+double pot_MALA(arma::vec R, arma::mat X1, arma::mat X2, arma::vec param, double tau1sq, double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq);
 RcppExport SEXP _SynInt_pot_MALA(SEXP RSEXP, SEXP X1SEXP, SEXP X2SEXP, SEXP paramSEXP, SEXP tau1sqSEXP, SEXP tau2sqSEXP, SEXP S1SEXP, SEXP S2SEXP, SEXP sigma_sqSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< mat >::type X1(X1SEXP);
-    Rcpp::traits::input_parameter< mat >::type X2(X2SEXP);
-    Rcpp::traits::input_parameter< vec >::type param(paramSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X1(X1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X2(X2SEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
     Rcpp::traits::input_parameter< double >::type tau1sq(tau1sqSEXP);
     Rcpp::traits::input_parameter< double >::type tau2sq(tau2sqSEXP);
-    Rcpp::traits::input_parameter< mat >::type S1(S1SEXP);
-    Rcpp::traits::input_parameter< mat >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S1(S1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S2(S2SEXP);
     Rcpp::traits::input_parameter< double >::type sigma_sq(sigma_sqSEXP);
     rcpp_result_gen = Rcpp::wrap(pot_MALA(R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq));
     return rcpp_result_gen;
 END_RCPP
 }
 // grad_MALA
-vec grad_MALA(vec R, mat X1, mat X2, vec param, double tau1sq, double tau2sq, mat S1, mat S2, double sigma_sq);
+arma::vec grad_MALA(arma::vec R, arma::mat X1, arma::mat X2, arma::vec param, double tau1sq, double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq);
 RcppExport SEXP _SynInt_grad_MALA(SEXP RSEXP, SEXP X1SEXP, SEXP X2SEXP, SEXP paramSEXP, SEXP tau1sqSEXP, SEXP tau2sqSEXP, SEXP S1SEXP, SEXP S2SEXP, SEXP sigma_sqSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< mat >::type X1(X1SEXP);
-    Rcpp::traits::input_parameter< mat >::type X2(X2SEXP);
-    Rcpp::traits::input_parameter< vec >::type param(paramSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X1(X1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X2(X2SEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type param(paramSEXP);
     Rcpp::traits::input_parameter< double >::type tau1sq(tau1sqSEXP);
     Rcpp::traits::input_parameter< double >::type tau2sq(tau2sqSEXP);
-    Rcpp::traits::input_parameter< mat >::type S1(S1SEXP);
-    Rcpp::traits::input_parameter< mat >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S1(S1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S2(S2SEXP);
     Rcpp::traits::input_parameter< double >::type sigma_sq(sigma_sqSEXP);
     rcpp_result_gen = Rcpp::wrap(grad_MALA(R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq));
     return rcpp_result_gen;
 END_RCPP
 }
 // sq_sampler
-Rcpp::List sq_sampler(vec R, mat X1, mat X2, double tau1sq, double tau2sq, mat S1, mat S2, double sigma_sq, vec old_param, double eps_MALA, double c_HMC, int L_HMC);
+Rcpp::List sq_sampler(arma::vec R, arma::mat X1, arma::mat X2, double tau1sq, double tau2sq, arma::mat S1, arma::mat S2, double sigma_sq, arma::vec old_param, double eps_MALA, double c_HMC, int L_HMC);
 RcppExport SEXP _SynInt_sq_sampler(SEXP RSEXP, SEXP X1SEXP, SEXP X2SEXP, SEXP tau1sqSEXP, SEXP tau2sqSEXP, SEXP S1SEXP, SEXP S2SEXP, SEXP sigma_sqSEXP, SEXP old_paramSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< vec >::type R(RSEXP);
-    Rcpp::traits::input_parameter< mat >::type X1(X1SEXP);
-    Rcpp::traits::input_parameter< mat >::type X2(X2SEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X1(X1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X2(X2SEXP);
     Rcpp::traits::input_parameter< double >::type tau1sq(tau1sqSEXP);
     Rcpp::traits::input_parameter< double >::type tau2sq(tau2sqSEXP);
-    Rcpp::traits::input_parameter< mat >::type S1(S1SEXP);
-    Rcpp::traits::input_parameter< mat >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S1(S1SEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S2(S2SEXP);
     Rcpp::traits::input_parameter< double >::type sigma_sq(sigma_sqSEXP);
-    Rcpp::traits::input_parameter< vec >::type old_param(old_paramSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type old_param(old_paramSEXP);
     Rcpp::traits::input_parameter< double >::type eps_MALA(eps_MALASEXP);
     Rcpp::traits::input_parameter< double >::type c_HMC(c_HMCSEXP);
     Rcpp::traits::input_parameter< int >::type L_HMC(L_HMCSEXP);
@@ -108,31 +108,31 @@ BEGIN_RCPP
 END_RCPP
 }
 // SIDsampler_draws_adaptive_optimized
-Rcpp::List SIDsampler_draws_adaptive_optimized(vec y, mat Z, mat ME_mat, cube IE_list, vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, mat SigmaME, mat SigmaME_inv, mat SigmaInt, mat SigmaInt_inv, int ME_nspl, int IE_nspl, mat var_cov, int cutoff, mat map_k_to_uv);
+Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list, arma::vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, arma::mat SigmaME, arma::mat SigmaME_inv, arma::mat SigmaInt, arma::mat SigmaInt_inv, int ME_nspl, int IE_nspl, arma::mat var_cov, int cutoff, arma::mat map_k_to_uv);
 RcppExport SEXP _SynInt_SIDsampler_draws_adaptive_optimized(SEXP ySEXP, SEXP ZSEXP, SEXP ME_matSEXP, SEXP IE_listSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP, SEXP MCSEXP, SEXP nSEXP, SEXP pSEXP, SEXP p_covSEXP, SEXP SigmaMESEXP, SEXP SigmaME_invSEXP, SEXP SigmaIntSEXP, SEXP SigmaInt_invSEXP, SEXP ME_nsplSEXP, SEXP IE_nsplSEXP, SEXP var_covSEXP, SEXP cutoffSEXP, SEXP map_k_to_uvSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< vec >::type y(ySEXP);
-    Rcpp::traits::input_parameter< mat >::type Z(ZSEXP);
-    Rcpp::traits::input_parameter< mat >::type ME_mat(ME_matSEXP);
-    Rcpp::traits::input_parameter< cube >::type IE_list(IE_listSEXP);
-    Rcpp::traits::input_parameter< vec >::type eps_MALA(eps_MALASEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type ME_mat(ME_matSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type IE_list(IE_listSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type eps_MALA(eps_MALASEXP);
     Rcpp::traits::input_parameter< double >::type c_HMC(c_HMCSEXP);
     Rcpp::traits::input_parameter< int >::type L_HMC(L_HMCSEXP);
     Rcpp::traits::input_parameter< int >::type MC(MCSEXP);
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
     Rcpp::traits::input_parameter< int >::type p(pSEXP);
     Rcpp::traits::input_parameter< int >::type p_cov(p_covSEXP);
-    Rcpp::traits::input_parameter< mat >::type SigmaME(SigmaMESEXP);
-    Rcpp::traits::input_parameter< mat >::type SigmaME_inv(SigmaME_invSEXP);
-    Rcpp::traits::input_parameter< mat >::type SigmaInt(SigmaIntSEXP);
-    Rcpp::traits::input_parameter< mat >::type SigmaInt_inv(SigmaInt_invSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type SigmaME(SigmaMESEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type SigmaME_inv(SigmaME_invSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type SigmaInt(SigmaIntSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type SigmaInt_inv(SigmaInt_invSEXP);
     Rcpp::traits::input_parameter< int >::type ME_nspl(ME_nsplSEXP);
     Rcpp::traits::input_parameter< int >::type IE_nspl(IE_nsplSEXP);
-    Rcpp::traits::input_parameter< mat >::type var_cov(var_covSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type var_cov(var_covSEXP);
     Rcpp::traits::input_parameter< int >::type cutoff(cutoffSEXP);
-    Rcpp::traits::input_parameter< mat >::type map_k_to_uv(map_k_to_uvSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type map_k_to_uv(map_k_to_uvSEXP);
     rcpp_result_gen = Rcpp::wrap(SIDsampler_draws_adaptive_optimized(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv));
     return rcpp_result_gen;
 END_RCPP

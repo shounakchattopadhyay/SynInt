@@ -13,6 +13,38 @@
 #source("penmatt.R")
 #sourceCpp("cpp_MCMCSampler_adaptive_optimized.cpp")
 
+### Univariate Penalty
+
+penmatt<-function(M)
+{
+  
+  #### Defines univariate penalty matrix. ####
+  #### Based on first order differences. ####
+  
+  matt = matrix(0, nrow = M, ncol = M)
+  
+  diag(matt)[1:(M-1)] = 2
+  diag(matt)[M] = 1
+  
+  for(i in 1:M)
+  {
+    for(j in 1:M)
+    {
+      if(i == j+1)
+      {
+        matt[i,j] = -1
+      }
+      else if(j == i+1)
+      {
+        matt[i,j] = -1
+      }
+    }
+  }
+  
+  return(matt)
+  
+}
+
 ##M+4 = #splines for main effects, N+3 = #splines for interaction tensor products
 
 SIMsampler<-function(y,
