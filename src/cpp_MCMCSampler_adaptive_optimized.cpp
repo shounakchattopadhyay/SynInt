@@ -648,6 +648,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::m
                             Rcpp::Named("IE_neg_coeff_part1") = IE_neg_theta2,
                             Rcpp::Named("IE_neg_coeff_part2") =  IE_neg_phi2,
                             Rcpp::Named("cov_effects") = cov_effect_stor,
+                            Rcpp::Named("ME_mat") = ME_mat,
+                            Rcpp::Named("IE_list") = IE_list,
                             Rcpp::Named("Accept_Prop") = accept_MALA,
                             Rcpp::Named("HMC_epsilon") = eps_MALA);
   
