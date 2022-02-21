@@ -35,6 +35,8 @@ SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2
   \item{IE_pos_coeff_part2}{MCMC samples of second part of positive function.}
   \item{IE_neg_coeff_part1}{MCMC samples of first part of negative function.}
   \item{IE_neg_coeff_part2}{MCMC samples of second part of negative function.}
+  \item{ME_mat}{Returns the ME matrix of evaluated spline basis functions.}
+  \item{IE_list}{Returns the IE list of spline basis matrices.}
   \item{cov_effects}{MCMC samples of covariate effects.}
   \item{Accept_Prop}{HMC acceptance indicators.}
   \item{HMC_epsilon}{HMC vector of step-sizes after sampling.}
