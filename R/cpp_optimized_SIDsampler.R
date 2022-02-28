@@ -78,8 +78,8 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  #nspl_ME = K_ME+4
-  nspl_ME = K_ME + 3
+  nspl_ME = K_ME + 4
+  #nspl_ME = K_ME + 3
   nspl_IE = K_IE + 3
   
   ME_list = array(0, dim = c(n, nspl_ME, p))
@@ -103,17 +103,15 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    # me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
-    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
+    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+    # me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
     
-    # ME_subtract[ind,] = colMeans(me_spl)
-    # final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+    ME_subtract[ind,] = colMeans(me_spl)
+    final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
     
-    final_Xmat_ME = me_spl
+    # final_Xmat_ME = me_spl
     
     ME_list[,,ind] = final_Xmat_ME
-    
-    # S_ME_inv[,,ind] = penmatt(K_ME + 4)
     
     S_ME_inv[,,ind] = penmatt(nspl_ME)
     
