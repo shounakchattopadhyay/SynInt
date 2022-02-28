@@ -103,13 +103,13 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
-    # me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
+    #me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
     
-    ME_subtract[ind,] = colMeans(me_spl)
-    final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+    #ME_subtract[ind,] = colMeans(me_spl)
+    #final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
     
-    # final_Xmat_ME = me_spl
+    final_Xmat_ME = me_spl
     
     ME_list[,,ind] = final_Xmat_ME
     
