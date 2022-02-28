@@ -78,12 +78,16 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  ME_list = array(0, dim = c(n, K_ME+4, p))
-  IE_list = array(0, dim = c(n, K_IE+3, p))
-  ME_subtract = matrix(0, nrow = p, ncol = K_ME+4)
+  #nspl_ME = K_ME+4
+  nspl_ME = K_ME + 3
+  nspl_IE = K_IE + 3
   
-  S_ME_inv = array(0, dim = c(K_ME+4,K_ME+4,p))
-  S_IE_inv = array(0, dim = c(K_IE+3,K_IE+3,p))
+  ME_list = array(0, dim = c(n, nspl_ME, p))
+  IE_list = array(0, dim = c(n, nspl_IE, p))
+  ME_subtract = matrix(0, nrow = p, ncol = nspl_ME)
+  
+  S_ME_inv = array(0, dim = c(nspl_ME, nspl_ME, p))
+  S_IE_inv = array(0, dim = c(nspl_IE, nspl_IE, p))
   
   ind = 1
   
@@ -99,14 +103,19 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+    # me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
     
-    ME_subtract[ind,] = colMeans(me_spl)
-    final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+    # ME_subtract[ind,] = colMeans(me_spl)
+    # final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+    
+    final_Xmat_ME = me_spl
     
     ME_list[,,ind] = final_Xmat_ME
     
-    S_ME_inv[,,ind] = penmatt(K_ME + 4)
+    # S_ME_inv[,,ind] = penmatt(K_ME + 4)
+    
+    S_ME_inv[,,ind] = penmatt(nspl_ME)
     
     ### For interaction effects ###
     
@@ -121,7 +130,7 @@ SIMsampler<-function(y,
     
     IE_list[,,ind] = final_Xmat_IE
     
-    S_IE_inv[,,ind] = penmatt(K_IE + 3) 
+    S_IE_inv[,,ind] = penmatt(nspl_IE) 
     
   }
   
@@ -152,10 +161,10 @@ SIMsampler<-function(y,
   
   map_k_to_uv = map_k_to_uv - 1
   
-  SigmaME = solve(penmatt(K_ME+4))
-  SigmaME_inv = penmatt(K_ME+4)
-  SigmaInt = solve(penmatt(K_IE+3))
-  SigmaInt_inv = penmatt(K_IE+3)
+  SigmaME = solve(penmatt(nspl_ME))
+  SigmaME_inv = penmatt(nspl_ME)
+  SigmaInt = solve(penmatt(nspl_IE))
+  SigmaInt_inv = penmatt(nspl_IE)
   
   SIM_model = SIDsampler_draws_adaptive_optimized(y, 
                                                   Z, 
@@ -172,8 +181,8 @@ SIMsampler<-function(y,
                                                   SigmaME_inv,
                                                   SigmaInt, 
                                                   SigmaInt_inv,
-                                                  K_ME+4, 
-                                                  K_IE+3,
+                                                  nspl_ME, 
+                                                  nspl_IE,
                                                   var_cov, 
                                                   MC,
                                                   map_k_to_uv)
