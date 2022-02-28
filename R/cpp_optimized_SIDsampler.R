@@ -78,8 +78,8 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  nspl_ME = K_ME + 4
-  #nspl_ME = K_ME + 3
+  #nspl_ME = K_ME + 4
+  nspl_ME = K_ME + 3
   nspl_IE = K_IE + 3
   
   ME_list = array(0, dim = c(n, nspl_ME, p))
