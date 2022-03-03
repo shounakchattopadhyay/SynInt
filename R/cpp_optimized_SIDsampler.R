@@ -90,7 +90,7 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  if(me_integral_constraint = TRUE)
+  if(me_integral_constraint == TRUE)
   {
     
     nspl_ME = K_ME + 4
@@ -125,7 +125,7 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    if(me_integral_constraint = TRUE)
+    if(me_integral_constraint == TRUE)
     {
     
       me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
