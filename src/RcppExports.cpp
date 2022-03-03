@@ -22,17 +22,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// random_normal
-double random_normal(float s);
-RcppExport SEXP _SynInt_random_normal(SEXP sSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< float >::type s(sSEXP);
-    rcpp_result_gen = Rcpp::wrap(random_normal(s));
-    return rcpp_result_gen;
-END_RCPP
-}
 // maineffects_sampler
 arma::vec maineffects_sampler(arma::vec R, arma::mat X, arma::mat Psi_inv, double sigma_sq);
 RcppExport SEXP _SynInt_maineffects_sampler(SEXP RSEXP, SEXP XSEXP, SEXP Psi_invSEXP, SEXP sigma_sqSEXP) {
@@ -108,8 +97,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SIDsampler_draws_adaptive_optimized
-Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list, arma::vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, arma::mat SigmaME, arma::mat SigmaME_inv, arma::mat SigmaInt, arma::mat SigmaInt_inv, int ME_nspl, int IE_nspl, arma::mat var_cov, int cutoff, arma::mat map_k_to_uv);
-RcppExport SEXP _SynInt_SIDsampler_draws_adaptive_optimized(SEXP ySEXP, SEXP ZSEXP, SEXP ME_matSEXP, SEXP IE_listSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP, SEXP MCSEXP, SEXP nSEXP, SEXP pSEXP, SEXP p_covSEXP, SEXP SigmaMESEXP, SEXP SigmaME_invSEXP, SEXP SigmaIntSEXP, SEXP SigmaInt_invSEXP, SEXP ME_nsplSEXP, SEXP IE_nsplSEXP, SEXP var_covSEXP, SEXP cutoffSEXP, SEXP map_k_to_uvSEXP) {
+Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list, arma::vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, arma::mat SigmaME, arma::mat SigmaME_inv, arma::mat SigmaInt, arma::mat SigmaInt_inv, int ME_nspl, int IE_nspl, arma::mat var_cov, int cutoff, arma::mat map_k_to_uv, arma::vec zero_ind);
+RcppExport SEXP _SynInt_SIDsampler_draws_adaptive_optimized(SEXP ySEXP, SEXP ZSEXP, SEXP ME_matSEXP, SEXP IE_listSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP, SEXP MCSEXP, SEXP nSEXP, SEXP pSEXP, SEXP p_covSEXP, SEXP SigmaMESEXP, SEXP SigmaME_invSEXP, SEXP SigmaIntSEXP, SEXP SigmaInt_invSEXP, SEXP ME_nsplSEXP, SEXP IE_nsplSEXP, SEXP var_covSEXP, SEXP cutoffSEXP, SEXP map_k_to_uvSEXP, SEXP zero_indSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -133,19 +122,19 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::mat >::type var_cov(var_covSEXP);
     Rcpp::traits::input_parameter< int >::type cutoff(cutoffSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type map_k_to_uv(map_k_to_uvSEXP);
-    rcpp_result_gen = Rcpp::wrap(SIDsampler_draws_adaptive_optimized(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv));
+    Rcpp::traits::input_parameter< arma::vec >::type zero_ind(zero_indSEXP);
+    rcpp_result_gen = Rcpp::wrap(SIDsampler_draws_adaptive_optimized(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv, zero_ind));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SynInt_random_gamma", (DL_FUNC) &_SynInt_random_gamma, 1},
-    {"_SynInt_random_normal", (DL_FUNC) &_SynInt_random_normal, 1},
     {"_SynInt_maineffects_sampler", (DL_FUNC) &_SynInt_maineffects_sampler, 4},
     {"_SynInt_pot_MALA", (DL_FUNC) &_SynInt_pot_MALA, 9},
     {"_SynInt_grad_MALA", (DL_FUNC) &_SynInt_grad_MALA, 9},
     {"_SynInt_sq_sampler", (DL_FUNC) &_SynInt_sq_sampler, 12},
-    {"_SynInt_SIDsampler_draws_adaptive_optimized", (DL_FUNC) &_SynInt_SIDsampler_draws_adaptive_optimized, 20},
+    {"_SynInt_SIDsampler_draws_adaptive_optimized", (DL_FUNC) &_SynInt_SIDsampler_draws_adaptive_optimized, 21},
     {NULL, NULL, 0}
 };
 

@@ -5,10 +5,6 @@ random_gamma <- function(a) {
     .Call(`_SynInt_random_gamma`, a)
 }
 
-random_normal <- function(s) {
-    .Call(`_SynInt_random_normal`, s)
-}
-
 maineffects_sampler <- function(R, X, Psi_inv, sigma_sq) {
     .Call(`_SynInt_maineffects_sampler`, R, X, Psi_inv, sigma_sq)
 }
@@ -25,7 +21,7 @@ sq_sampler <- function(R, X1, X2, tau1sq, tau2sq, S1, S2, sigma_sq, old_param, e
     .Call(`_SynInt_sq_sampler`, R, X1, X2, tau1sq, tau2sq, S1, S2, sigma_sq, old_param, eps_MALA, c_HMC, L_HMC)
 }
 
-SIDsampler_draws_adaptive_optimized <- function(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv) {
-    .Call(`_SynInt_SIDsampler_draws_adaptive_optimized`, y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv)
+SIDsampler_draws_adaptive_optimized <- function(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv, zero_ind) {
+    .Call(`_SynInt_SIDsampler_draws_adaptive_optimized`, y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv, zero_ind)
 }
 

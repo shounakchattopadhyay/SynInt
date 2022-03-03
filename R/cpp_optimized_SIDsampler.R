@@ -13,37 +13,47 @@
 #source("penmatt.R")
 #sourceCpp("cpp_MCMCSampler_adaptive_optimized.cpp")
 
-### Univariate Penalty
+# ### Univariate Penalty
+# 
+# penmatt<-function(M)
+# {
+# 
+#   Amat = matrix(0, nrow = M, ncol = M)
+# 
+#   Amat[1,] = c(1, rep(0, M-1))
+# 
+#   for(i in 2:M)
+#   {
+# 
+#     Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
+# 
+#   }
+# 
+#   return(t(Amat) %*% Amat)
+# 
+# }
+
+### Bivariate Penalty
 
 penmatt<-function(M)
 {
-  
-  #### Defines univariate penalty matrix. ####
-  #### Based on first order differences. ####
-  
-  matt = matrix(0, nrow = M, ncol = M)
-  
-  diag(matt)[1:(M-1)] = 2
-  diag(matt)[M] = 1
-  
-  for(i in 1:M)
+
+  Amat = matrix(0, nrow = M, ncol = M)
+
+  Amat[1,] = c(1, rep(0, M-1))
+  Amat[2,] = c(-2, 1, rep(0, M-2))
+
+  for(i in 3:M)
   {
-    for(j in 1:M)
-    {
-      if(i == j+1)
-      {
-        matt[i,j] = -1
-      }
-      else if(j == i+1)
-      {
-        matt[i,j] = -1
-      }
-    }
+
+    Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+
   }
-  
-  return(matt)
-  
+
+  return(t(Amat) %*% Amat)
+
 }
+
 
 ##M+4 = #splines for main effects, N+3 = #splines for interaction tensor products
 
@@ -55,7 +65,8 @@ SIMsampler<-function(y,
                      eps_MALA = rep(0.01, choose(dim(X)[2], 2)),
                      c_HMC = 1, 
                      L_HMC = 5, 
-                     MC = 10000){
+                     MC = 10000,
+                     zero_ind = rep(1, choose(dim(X)[2], 2))){
   
   library(MASS)
   library(splines)
@@ -78,8 +89,8 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  #nspl_ME = K_ME + 4
-  nspl_ME = K_ME + 3
+  nspl_ME = K_ME + 4
+  #nspl_ME = K_ME + 3
   nspl_IE = K_IE + 3
   
   ME_list = array(0, dim = c(n, nspl_ME, p))
@@ -103,13 +114,13 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    #me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
-    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
+    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+    #me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
     
-    #ME_subtract[ind,] = colMeans(me_spl)
-    #final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+    ME_subtract[ind,] = colMeans(me_spl)
+    final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
     
-    final_Xmat_ME = me_spl
+    #final_Xmat_ME = me_spl
     
     ME_list[,,ind] = final_Xmat_ME
     
@@ -132,13 +143,15 @@ SIMsampler<-function(y,
     
   }
   
-  ME_mat = NULL
+  ME_mat_MEs = NULL
   for(ind in 1:p)
   {
     
-    ME_mat = cbind(ME_mat, ME_list[,,ind])
+    ME_mat_MEs = cbind(ME_mat_MEs, ME_list[,,ind])
     
   }
+  
+  ME_mat = cbind(rep(1,n), Z, ME_mat_MEs)
   
   map_k_to_uv = matrix(0, nrow = choose(p,2), ncol = 3)
   
@@ -164,6 +177,11 @@ SIMsampler<-function(y,
   SigmaInt = solve(penmatt(nspl_IE))
   SigmaInt_inv = penmatt(nspl_IE)
   
+  # SigmaME = diag(nspl_ME)
+  # SigmaME_inv = diag(nspl_ME)
+  # SigmaInt = diag(nspl_IE)
+  # SigmaInt_inv = diag(nspl_IE)
+  
   SIM_model = SIDsampler_draws_adaptive_optimized(y, 
                                                   Z, 
                                                   ME_mat, 
@@ -183,7 +201,8 @@ SIMsampler<-function(y,
                                                   nspl_IE,
                                                   var_cov, 
                                                   MC,
-                                                  map_k_to_uv)
+                                                  map_k_to_uv,
+                                                  zero_ind)
   
   return(SIM_model)
   
