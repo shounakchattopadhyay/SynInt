@@ -66,7 +66,8 @@ SIMsampler<-function(y,
                      c_HMC = 1, 
                      L_HMC = 5, 
                      MC = 10000,
-                     zero_ind = rep(1, choose(dim(X)[2], 2))){
+                     zero_ind = rep(1, choose(dim(X)[2], 2)),
+                     me_integral_constraint = TRUE){
   
   library(MASS)
   library(splines)
@@ -89,8 +90,18 @@ SIMsampler<-function(y,
   
   #### B-Splines for computation ####
   
-  nspl_ME = K_ME + 4
-  #nspl_ME = K_ME + 3
+  if(me_integral_constraint = TRUE)
+  {
+    
+    nspl_ME = K_ME + 4
+    
+  }else
+  {
+    
+    nspl_ME = K_ME + 3
+    
+  }
+  
   nspl_IE = K_IE + 3
   
   ME_list = array(0, dim = c(n, nspl_ME, p))
@@ -114,13 +125,22 @@ SIMsampler<-function(y,
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
     
-    me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
-    #me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
+    if(me_integral_constraint = TRUE)
+    {
     
-    ME_subtract[ind,] = colMeans(me_spl)
-    final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+      me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
+      ME_subtract[ind,] = colMeans(me_spl)
+      final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
+      
     
-    #final_Xmat_ME = me_spl
+    }else
+    {
+    
+      me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
+      final_Xmat_ME = me_spl
+      
+    
+    }
     
     ME_list[,,ind] = final_Xmat_ME
     
