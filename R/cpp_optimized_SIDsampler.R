@@ -224,7 +224,7 @@ SIMsampler<-function(y,
                                                   map_k_to_uv,
                                                   zero_ind)
   
-  return(SIM_model)
+  return(list("SIM_model"=SIM_model, "original_spline_integrals" = ME_subtract))
   
 }
 
