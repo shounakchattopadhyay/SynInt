@@ -7,7 +7,8 @@
 }
 
 \usage{
-SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2)), c_HMC = 1.0, L_HMC = 5, MC = 10000)
+SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2)), c_HMC = 1.0, L_HMC = 5, MC = 10000, zero_ind = rep(1, choose(dim(X)[2],2)), 
+           me_integral_constraint = TRUE)
 }
 
 \arguments{
@@ -21,6 +22,7 @@ SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2
   \item{L_HMC}{Number of HMC steps per MCMC iteration. Default is 5.}
   \item{MC}{Number of Markov chain Monte Carlo samples to be drawn from the posterior distribution. Default is 10000.}
   \item{zero_ind}{p*(p-1)/2 by 1 vector with entries = 0 or 1 according to whether the corresponding pairwise interaction is eliminated from the model or included, respectively. Default value rep(1, choose(p,2)) includes all pairwise interactions.}
+  \item{me_integral_constraint}{If TRUE, then fits main effects using integral constraint; if FALSE, fits main effects using origin-start constraint. TRUE by default.}
 }
 
 \details{
