@@ -27,7 +27,7 @@ Maintainer: \packageMaintainer{SynInt}
 ~~ the R documentation directory ~~
 \keyword{ package }
 \seealso{
-\code{\link[<pkg>:<pkg>-package]{SIMsampler}}
+\code{\link{SIMsampler}}
 }
 \examples{
 #### To be added ####
