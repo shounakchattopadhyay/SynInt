@@ -206,6 +206,8 @@ SIMsampler<-function(y,
   # SigmaInt = diag(nspl_IE)
   # SigmaInt_inv = diag(nspl_IE)
   
+  print(noquote(paste("########## Sampling initiated with MC = ", MC, " ########## ", sep = "")))
+  
   SIM_model = SIDsampler_draws_adaptive_optimized(y, 
                                                   Z, 
                                                   ME_mat, 
@@ -230,6 +232,8 @@ SIMsampler<-function(y,
                                                   accept_low,
                                                   accept_high,
                                                   accept_scale)
+  
+  print(noquote(paste("########## Sampling completed with MC = ", MC, " ########## ", sep = "")))
   
   return(list("SIM_model"=SIM_model, 
               "original_spline_integrals" = ME_subtract))
