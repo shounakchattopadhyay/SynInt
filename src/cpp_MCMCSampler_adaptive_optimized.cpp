@@ -615,7 +615,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
     
     }
     
-    Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
+    // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
     // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
     // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
     
