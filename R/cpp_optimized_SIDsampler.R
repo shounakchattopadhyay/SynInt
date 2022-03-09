@@ -67,7 +67,11 @@ SIMsampler<-function(y,
                      L_HMC = 5, 
                      MC = 10000,
                      zero_ind = rep(1, choose(dim(X)[2], 2)),
-                     me_integral_constraint = TRUE){
+                     me_integral_constraint = TRUE,
+                     cutoff = 0.5*MC,
+                     accept_low = 0.4,
+                     accept_high = 0.7,
+                     accept_scale = 0.8){
   
   library(MASS)
   library(splines)
@@ -220,11 +224,15 @@ SIMsampler<-function(y,
                                                   nspl_ME, 
                                                   nspl_IE,
                                                   var_cov, 
-                                                  MC,
+                                                  cutoff,
                                                   map_k_to_uv,
-                                                  zero_ind)
+                                                  zero_ind,
+                                                  accept_low,
+                                                  accept_high,
+                                                  accept_scale)
   
-  return(list("SIM_model"=SIM_model, "original_spline_integrals" = ME_subtract))
+  return(list("SIM_model"=SIM_model, 
+              "original_spline_integrals" = ME_subtract))
   
 }
 

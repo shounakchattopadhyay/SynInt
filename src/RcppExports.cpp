@@ -97,8 +97,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SIDsampler_draws_adaptive_optimized
-Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list, arma::vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, arma::mat SigmaME, arma::mat SigmaME_inv, arma::mat SigmaInt, arma::mat SigmaInt_inv, int ME_nspl, int IE_nspl, arma::mat var_cov, int cutoff, arma::mat map_k_to_uv, arma::vec zero_ind);
-RcppExport SEXP _SynInt_SIDsampler_draws_adaptive_optimized(SEXP ySEXP, SEXP ZSEXP, SEXP ME_matSEXP, SEXP IE_listSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP, SEXP MCSEXP, SEXP nSEXP, SEXP pSEXP, SEXP p_covSEXP, SEXP SigmaMESEXP, SEXP SigmaME_invSEXP, SEXP SigmaIntSEXP, SEXP SigmaInt_invSEXP, SEXP ME_nsplSEXP, SEXP IE_nsplSEXP, SEXP var_covSEXP, SEXP cutoffSEXP, SEXP map_k_to_uvSEXP, SEXP zero_indSEXP) {
+Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, arma::mat Z, arma::mat ME_mat, arma::cube IE_list, arma::vec eps_MALA, double c_HMC, int L_HMC, int MC, int n, int p, int p_cov, arma::mat SigmaME, arma::mat SigmaME_inv, arma::mat SigmaInt, arma::mat SigmaInt_inv, int ME_nspl, int IE_nspl, arma::mat var_cov, int cutoff, arma::mat map_k_to_uv, arma::vec zero_ind, double accept_low, double accept_high, double accept_scale);
+RcppExport SEXP _SynInt_SIDsampler_draws_adaptive_optimized(SEXP ySEXP, SEXP ZSEXP, SEXP ME_matSEXP, SEXP IE_listSEXP, SEXP eps_MALASEXP, SEXP c_HMCSEXP, SEXP L_HMCSEXP, SEXP MCSEXP, SEXP nSEXP, SEXP pSEXP, SEXP p_covSEXP, SEXP SigmaMESEXP, SEXP SigmaME_invSEXP, SEXP SigmaIntSEXP, SEXP SigmaInt_invSEXP, SEXP ME_nsplSEXP, SEXP IE_nsplSEXP, SEXP var_covSEXP, SEXP cutoffSEXP, SEXP map_k_to_uvSEXP, SEXP zero_indSEXP, SEXP accept_lowSEXP, SEXP accept_highSEXP, SEXP accept_scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -123,7 +123,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type cutoff(cutoffSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type map_k_to_uv(map_k_to_uvSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type zero_ind(zero_indSEXP);
-    rcpp_result_gen = Rcpp::wrap(SIDsampler_draws_adaptive_optimized(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv, zero_ind));
+    Rcpp::traits::input_parameter< double >::type accept_low(accept_lowSEXP);
+    Rcpp::traits::input_parameter< double >::type accept_high(accept_highSEXP);
+    Rcpp::traits::input_parameter< double >::type accept_scale(accept_scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(SIDsampler_draws_adaptive_optimized(y, Z, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, var_cov, cutoff, map_k_to_uv, zero_ind, accept_low, accept_high, accept_scale));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -134,7 +137,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SynInt_pot_MALA", (DL_FUNC) &_SynInt_pot_MALA, 9},
     {"_SynInt_grad_MALA", (DL_FUNC) &_SynInt_grad_MALA, 9},
     {"_SynInt_sq_sampler", (DL_FUNC) &_SynInt_sq_sampler, 12},
-    {"_SynInt_SIDsampler_draws_adaptive_optimized", (DL_FUNC) &_SynInt_SIDsampler_draws_adaptive_optimized, 21},
+    {"_SynInt_SIDsampler_draws_adaptive_optimized", (DL_FUNC) &_SynInt_SIDsampler_draws_adaptive_optimized, 24},
     {NULL, NULL, 0}
 };
 
