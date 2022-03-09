@@ -8,7 +8,11 @@
 
 \usage{
 SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2)), c_HMC = 1.0, L_HMC = 5, MC = 10000, zero_ind = rep(1, choose(dim(X)[2],2)), 
-           me_integral_constraint = TRUE)
+           me_integral_constraint = TRUE, 
+           cutoff = 0.5*MC,
+           accept_low = 0.4,
+           accept_high = 0.7,
+           accept_scale = 0.8)
 }
 
 \arguments{
@@ -24,6 +28,10 @@ SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2
   \item{zero_ind}{p*(p-1)/2 by 1 vector with entries = 0 or 1 according to whether the corresponding pairwise interaction is eliminated from the model or included, respectively. Default value rep(1, choose(p,2)) includes all pairwise interactions.}
   \item{me_integral_constraint}{If TRUE, then fits main effects using integral constraint; if FALSE, fits main effects using origin-start constraint. TRUE by default.}
 }
+  \item{cutoff}{Adaptive choosing of HMC step-size done till first cutoff * MC samples.}
+  \item{accept_low}{Lower acceptance limit.}
+  \item{accept_high}{Upper acceptance limit.}
+  \item{accept_scale}{Perturbation factor in adaptive HMC phase.}
 
 \details{
   A list is returned with the following components.
