@@ -346,7 +346,10 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                                                arma::mat var_cov, 
                                                int cutoff,
                                                arma::mat map_k_to_uv,
-                                               arma::vec zero_ind){
+                                               arma::vec zero_ind,
+                                               double accept_low,
+                                               double accept_high,
+                                               double accept_scale){
   //Define storage matrices
   
   arma::vec alpha_stor(MC, fill::zeros);
@@ -586,13 +589,13 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         
         for(int k1=0; k1<K; ++k1){
           
-          if(mean(accept_MALA.rows(m-199,m).col(k1)) <= 0.5){
+          if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
             
-            eps_MALA(k1) = eps_MALA(k1)*0.9;
+            eps_MALA(k1) = eps_MALA(k1)*accept_scale;
             
-          }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= 0.8){
+          }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
             
-            eps_MALA(k1) = eps_MALA(k1)/0.9;
+            eps_MALA(k1) = eps_MALA(k1)/accept_scale;
             
           }else{
             
@@ -606,9 +609,15 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       
     }  
     
+    if((m+1) % 1000 == 0){
+      
+      Rcpp::Rcout << "Monte Carlo Sample: " << m+1 << std::endl;
+    
+    }
+    
     Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
-    Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
-    Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
+    // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
+    // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
     
   }  
   
