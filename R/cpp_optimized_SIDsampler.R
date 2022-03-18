@@ -15,44 +15,44 @@
 
 # ### Univariate Penalty
 # 
-# penmatt<-function(M)
-# {
-# 
-#   Amat = matrix(0, nrow = M, ncol = M)
-# 
-#   Amat[1,] = c(1, rep(0, M-1))
-# 
-#   for(i in 2:M)
-#   {
-# 
-#     Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
-# 
-#   }
-# 
-#   return(t(Amat) %*% Amat)
-# 
-# }
-
-### Bivariate Penalty
-
 penmatt<-function(M)
 {
 
   Amat = matrix(0, nrow = M, ncol = M)
 
   Amat[1,] = c(1, rep(0, M-1))
-  Amat[2,] = c(-2, 1, rep(0, M-2))
 
-  for(i in 3:M)
+  for(i in 2:M)
   {
 
-    Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+    Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
 
   }
 
   return(t(Amat) %*% Amat)
 
 }
+
+### Bivariate Penalty
+
+# penmatt<-function(M)
+# {
+# 
+#   Amat = matrix(0, nrow = M, ncol = M)
+# 
+#   Amat[1,] = c(1, rep(0, M-1))
+#   Amat[2,] = c(-2, 1, rep(0, M-2))
+# 
+#   for(i in 3:M)
+#   {
+# 
+#     Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+# 
+#   }
+# 
+#   return(t(Amat) %*% Amat)
+# 
+# }
 
 
 ##M+4 = #splines for main effects, N+3 = #splines for interaction tensor products
@@ -62,6 +62,8 @@ SIMsampler<-function(y,
                      Z, 
                      K_ME = 5,
                      K_IE = 2, 
+                     a_lamb = 0.001,
+                     b_lamb = 0.001,
                      eps_MALA = rep(0.01, choose(dim(X)[2], 2)),
                      c_HMC = 1, 
                      L_HMC = 5, 
@@ -69,8 +71,8 @@ SIMsampler<-function(y,
                      zero_ind = rep(1, choose(dim(X)[2], 2)),
                      me_integral_constraint = TRUE,
                      cutoff = 0.5*MC,
-                     accept_low = 0.4,
-                     accept_high = 0.7,
+                     accept_low = 0.65,
+                     accept_high = 0.9,
                      accept_scale = 0.8){
   
   library(MASS)
@@ -87,10 +89,6 @@ SIMsampler<-function(y,
   n = dim(X)[1]
   p = dim(X)[2]
   p_cov = dim(Z)[2]
-  
-  #### Covariate Effects ####
-  
-  var_cov = solve(t(Z) %*% Z)
   
   #### B-Splines for computation ####
   
@@ -225,13 +223,14 @@ SIMsampler<-function(y,
                                                   SigmaInt_inv,
                                                   nspl_ME, 
                                                   nspl_IE,
-                                                  var_cov, 
                                                   cutoff,
                                                   map_k_to_uv,
                                                   zero_ind,
                                                   accept_low,
                                                   accept_high,
-                                                  accept_scale)
+                                                  accept_scale,
+                                                  a_lamb,
+                                                  b_lamb)
   
   print(noquote(paste("########## Sampling completed with MC = ", MC, " ########## ", sep = "")))
   

@@ -343,13 +343,14 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                                                arma::mat SigmaInt_inv,
                                                int ME_nspl, 
                                                int IE_nspl,
-                                               arma::mat var_cov, 
                                                int cutoff,
                                                arma::mat map_k_to_uv,
                                                arma::vec zero_ind,
                                                double accept_low,
                                                double accept_high,
-                                               double accept_scale){
+                                               double accept_scale,
+                                               double a_lamb,
+                                               double b_lamb){
   //Define storage matrices
   
   arma::vec alpha_stor(MC, fill::zeros);
@@ -357,7 +358,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
   
   arma::mat ME_coeff_stor(MC, ME_nspl*p, fill::zeros);
   arma::mat ME_scale_stor(MC, p, fill::ones);
-  arma::mat ME_scale_aux(MC, p, fill::ones);
+  // arma::mat ME_scale_aux(MC, p, fill::ones);
   
   int K = p*(p-1)/2;
   // int IE_nbasis = IE_nspl * IE_nspl;
@@ -371,6 +372,9 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
   arma::mat IE_scale_tausq2(MC, K, fill::ones);
   arma::mat IE_scale_a(MC, K, fill::ones);
   arma::mat IE_scale_b(MC, K, fill::ones);
+  
+  arma::vec IE_scale_deltasq(MC, fill::ones);
+  arma::vec IE_scale_nu(MC, fill::ones);
   
   arma::mat IE_pen(MC, K, fill::ones);
   
@@ -417,6 +421,10 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
   
   //Begin MCMC sampling. 
   
+  arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
+  whole_prec(0,0) = 0.001;
+  whole_prec.submat(1, 1, p_cov, p_cov) = 0.001 * eye(p_cov, p_cov);
+  
   for(int m=1; m<MC; ++m){
     
     // //Sample (\alpha, \sigma^2) | - 
@@ -437,10 +445,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
     
     arma::mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
     
-    arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
-    whole_prec(0,0) = 0.01;
-    whole_prec.submat(1, 1, p_cov, p_cov).eye();
-    whole_prec.submat(p_cov+1, p_cov+1, ((p*ME_nspl)+p_cov), ((p*ME_nspl)+p_cov)) = Psi_ME_inv;
+    whole_prec.submat(p_cov+1, p_cov+1, 
+                      ((p*ME_nspl)+p_cov), ((p*ME_nspl)+p_cov)) = Psi_ME_inv;
     
     arma::vec sampler_ME = maineffects_sampler(R_ME, 
                                          ME_mat, 
@@ -461,14 +467,16 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
       qf_stor(j) = qf_j(0,0);
       
-      ME_scale_stor(m,j) = random_gamma(0.5 + 
-                          (0.5*ME_nspl))/(ME_scale_aux(m-1,j) + (0.5*qf_stor(j)));
+      ME_scale_stor(m,j) = random_gamma(a_lamb + 
+                          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
       
-      ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
+      // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
       
     }
     
     //Interaction Effects and Related Parameters. #####
+    
+    arma::mat qf_stor_int(K, 2, fill::ones);
     
     for(int k=0; k<K; ++k){
       
@@ -505,8 +513,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
                                           IE_list.slice(u), 
                                           IE_list.slice(v), 
-                                          IE_scale_tausq1(m-1,k),
-                                          IE_scale_tausq2(m-1,k),
+                          IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
+                          IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
                                           SigmaInt_inv,
                                           SigmaInt_inv,
                                           sigmasq_stor(m-1),
@@ -562,19 +570,34 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         
         // Sample \tau_1^2 | a and a | \tau_1^2
         
-        double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + c_1k;
+        double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
+                             (c_1k/IE_scale_deltasq(m-1));
         
         IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
         IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
         
         // Sample \tau_2^2 | b and b | \tau_2^2
         
-        double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + c_2k;
+        double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
+                             (c_2k/IE_scale_deltasq(m-1));
         
         IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
         IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
         
+        //Store qf/tau^2
+        
+        qf_stor_int(k,1) = c_1k / IE_scale_tausq1(m,k);
+        qf_stor_int(k,2) = c_2k / IE_scale_tausq2(m,k);
+        
       }
+      
+      // Sample \delta^2 | \nu and \nu | \delta^2
+      
+      double deltasq_shape = (2*IE_nspl*K) + 0.5;
+      double deltasq_rate = (0.5*accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+      
+      IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
+      IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
       
       // Sample error variance
       
@@ -660,6 +683,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                             Rcpp::Named("ME_mat") = ME_mat,
                             Rcpp::Named("IE_list") = IE_list,
                             Rcpp::Named("Accept_Prop") = accept_MALA,
-                            Rcpp::Named("HMC_epsilon") = eps_MALA);
+                            Rcpp::Named("HMC_epsilon") = eps_MALA,
+                            Rcpp::Named("IE_penalty") = IE_pen,
+                            Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
   
 }
