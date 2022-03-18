@@ -235,7 +235,7 @@ SIMsampler<-function(y,
   print(noquote(paste("########## Sampling completed with MC = ", MC, " ########## ", sep = "")))
   
   return(list("SIM_model"=SIM_model, 
-              "original_spline_integrals" = ME_subtract))
+              "ME_list" = ME_list))
   
 }
 

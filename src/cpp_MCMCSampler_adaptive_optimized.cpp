@@ -102,7 +102,7 @@ double pot_MALA(arma::vec R,
   double pot_prior = ((c_11+c_12) / tau1sq) + 
               ((c_21+c_22) / tau2sq) + 
               (0.5*log(1 + (penalty_term / pen_param))) +
-              (pen_param + (0.5*log(pen_param))); 
+              (pen_param - (0.5*log(pen_param))); 
         
   // Last line = prior for kappa = log(kappa)
         
@@ -216,7 +216,7 @@ arma::vec grad_MALA(arma::vec R,
         
 // Construct gradient wrt pen_param
 
-  double grad_pen = pen_param + ((0.5/(1.0 + (penalty_term / pen_param))));
+  double grad_pen = pen_param + ((0.5/(1.0 + (penalty_term / pen_param)))) - 1;
   arma::vec grad_pen_vec(1, fill::zeros);
   grad_pen_vec(0) = grad_pen;
           
@@ -282,11 +282,11 @@ Rcpp::List sq_sampler(arma::vec R,
   
   double current_U = pot_MALA(R, X1, X2, current_param, tau1sq, tau2sq, 
                               S1, S2, sigma_sq);
-  double current_K = sum(square(current_rho))/(2*pow(c_HMC, 2.0));
+  double current_K = accu(square(current_rho))/(2*pow(c_HMC, 2.0));
   
   double new_U = pot_MALA(R, X1, X2, new_param, tau1sq, tau2sq, 
                           S1, S2, sigma_sq);
-  double new_K = sum(square(new_rho))/(2*pow(c_HMC, 2.0));
+  double new_K = accu(square(new_rho))/(2*pow(c_HMC, 2.0));
   
   double U1 = randu();
   double energy_diff1 = exp(current_U - new_U + current_K - new_K);
@@ -594,10 +594,12 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       // Sample \delta^2 | \nu and \nu | \delta^2
       
       double deltasq_shape = (2*IE_nspl*K) + 0.5;
-      double deltasq_rate = (0.5*accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
-      
+      double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+
       IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
       IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
+      
+      // IE_scale_deltasq(m) = 1.0;
       
       // Sample error variance
       
