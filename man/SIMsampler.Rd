@@ -7,11 +7,18 @@
 }
 
 \usage{
-SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2)), c_HMC = 1.0, L_HMC = 5, MC = 10000, zero_ind = rep(1, choose(dim(X)[2],2)), 
+SIMsampler(y, X, Z, 
+           K_ME = 5, 
+           K_IE = 2,
+           a_lamb = 0.001,
+           b_lamb = 0.001,
+           eps_MALA = rep(0.01, choose(dim(X)[2], 2)), 
+           c_HMC = 1.0, L_HMC = 5, MC = 10000, 
+           zero_ind = rep(1, choose(dim(X)[2],2)), 
            me_integral_constraint = TRUE, 
            cutoff = 0.5*MC,
-           accept_low = 0.4,
-           accept_high = 0.7,
+           accept_low = 0.65,
+           accept_high = 0.9,
            accept_scale = 0.8)
 }
 
@@ -21,6 +28,7 @@ SIMsampler(y, X, Z, K_ME = 5, K_IE = 2, eps_MALA = rep(0.01, choose(dim(X)[2], 2
   \item{Z}{n by p_cov matrix of values taken by covariate variables.}
   \item{K_ME}{Number of knots taken to fit main effects. Default value is 5.}
   \item{K_IE}{Number of knots taken to fit interacton effects. Default value is 2.}
+  \item(a_lamb, b_lamb}{Hyperparameters of the gamma prior for main effect scales.}
   \item{eps_MALA}{p*(p-1)/2 by 1 vector of step-sizes while performing HMC. Default sets all entries to 0.01.}
   \item{c_HMC}{Mass value while performing HMC. Default value is 1.}
   \item{L_HMC}{Number of HMC steps per MCMC iteration. Default is 5.}
