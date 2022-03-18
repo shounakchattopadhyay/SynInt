@@ -586,8 +586,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         
         //Store qf/tau^2
         
-        qf_stor_int(k,1) = c_1k / IE_scale_tausq1(m,k);
-        qf_stor_int(k,2) = c_2k / IE_scale_tausq2(m,k);
+        qf_stor_int(k,0) = c_1k / IE_scale_tausq1(m,k);
+        qf_stor_int(k,1) = c_2k / IE_scale_tausq2(m,k);
         
       }
       
