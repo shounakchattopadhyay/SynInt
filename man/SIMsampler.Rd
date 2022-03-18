@@ -28,7 +28,7 @@ SIMsampler(y, X, Z,
   \item{Z}{n by p_cov matrix of values taken by covariate variables.}
   \item{K_ME}{Number of knots taken to fit main effects. Default value is 5.}
   \item{K_IE}{Number of knots taken to fit interacton effects. Default value is 2.}
-  \item(a_lamb, b_lamb}{Hyperparameters of the gamma prior for main effect scales.}
+  \item{a_lamb, b_lamb}{Hyperparameters of the gamma prior for main effect scales.}
   \item{eps_MALA}{p*(p-1)/2 by 1 vector of step-sizes while performing HMC. Default sets all entries to 0.01.}
   \item{c_HMC}{Mass value while performing HMC. Default value is 1.}
   \item{L_HMC}{Number of HMC steps per MCMC iteration. Default is 5.}
