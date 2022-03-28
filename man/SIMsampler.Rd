@@ -7,7 +7,9 @@
 }
 
 \usage{
-SIMsampler(y, X, Z, 
+SIMsampler(y, 
+           X, 
+           Z = NULL, 
            K_ME = 5, 
            K_IE = 2,
            a_lamb = 0.001,
@@ -25,7 +27,7 @@ SIMsampler(y, X, Z,
 \arguments{
   \item{y}{n by 1 vector of continuous responses.}
   \item{X}{n by p matrix of values taken by exposure variables.}
-  \item{Z}{n by p_cov matrix of values taken by covariate variables.}
+  \item{Z}{n by p_cov matrix of values taken by covariate variables. By default Z = NULL meaning there are no covariates.}
   \item{K_ME}{Number of knots taken to fit main effects. Default value is 5.}
   \item{K_IE}{Number of knots taken to fit interacton effects. Default value is 2.}
   \item{a_lamb, b_lamb}{Hyperparameters of the gamma prior for main effect scales.}
