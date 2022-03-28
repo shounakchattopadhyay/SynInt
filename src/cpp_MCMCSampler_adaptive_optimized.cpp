@@ -326,8 +326,7 @@ Rcpp::List sq_sampler(arma::vec R,
 }
 
 // [[Rcpp::export]]
-Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y, 
-                                               arma::mat Z, 
+Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                                                arma::mat ME_mat, 
                                                arma::cube IE_list,
                                                arma::vec eps_MALA, 
@@ -380,313 +379,624 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
   
   arma::mat all_interactions(n, K, fill::zeros);
   
-  arma::mat cov_effect_stor(MC, p_cov, fill::zeros);
-  
-  for(int k=0; k<K; ++k){
+  if(p_cov > 0){
     
-    // Obtain inverse index (u,v)
-    
-    int u = map_k_to_uv(k,1);
-    int v = map_k_to_uv(k,2);
-      
-    // Initialize rank 1 components
-    
-    if(zero_ind(k) == 1){
-      
-      (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-       0.1*SigmaInt).t();
-      (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-       0.1*SigmaInt).t();
-      (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-       0.1*SigmaInt).t();
-      (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-       0.1*SigmaInt).t();
-      
-      arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
-      arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
-      arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
-      arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
-      
-      arma::vec pos_part = pos_part1 % pos_part2;
-      arma::vec neg_part = neg_part1 % neg_part2;
-      
-      all_interactions.col(k) = pos_part - neg_part;
-      
-    }
-    
-  }
-  
-  arma::mat accept_MALA(MC, K, fill::zeros);
-  accept_MALA.row(0) = vec(K, fill::ones).t();
-  
-  //Begin MCMC sampling. 
-  
-  arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
-  whole_prec(0,0) = 0.001;
-  whole_prec.submat(1, 1, p_cov, p_cov) = 0.001 * eye(p_cov, p_cov);
-  
-  for(int m=1; m<MC; ++m){
-    
-    // //Sample (\alpha, \sigma^2) | - 
-    // 
-    // arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
-    //                       (sum(all_interactions, 1)) +
-    //                       (Z * cov_effect_stor.row(m-1).t()));
-    // 
-    // sigmasq_stor(m) = sigmasq_sampler(R_int_sigsq, n);
-    // alpha_stor(m) = intercept_sampler(R_int_sigsq, n, sigmasq_stor(m));
-    
-    ////Main Effects and Related Parameters (intercept, sigma^2)
-    
-    arma::vec R_ME = y - sum(all_interactions, 1);
-    
-    arma::mat mat_ME_scales(p, p, fill::zeros);
-    mat_ME_scales.diag() = ME_scale_stor.row(m-1).t();
-    
-    arma::mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
-    
-    whole_prec.submat(p_cov+1, p_cov+1, 
-                      ((p*ME_nspl)+p_cov), ((p*ME_nspl)+p_cov)) = Psi_ME_inv;
-    
-    arma::vec sampler_ME = maineffects_sampler(R_ME, 
-                                         ME_mat, 
-                                         whole_prec,
-                                         sigmasq_stor(m-1));
-    
-    alpha_stor(m) = sampler_ME(0);
-    cov_effect_stor.row(m) = sampler_ME(span(1, p_cov)).t();
-    ME_coeff_stor.row(m) = sampler_ME(span(p_cov+1,p_cov+(p*ME_nspl))).t();
-    
-    //Sample \lambda_j = scale of \beta_j ####
-    
-    arma::vec qf_stor(p, fill::ones);
-    
-    for(int j=0; j<p; ++j){
-      
-      arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
-      arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
-      qf_stor(j) = qf_j(0,0);
-      
-      ME_scale_stor(m,j) = random_gamma(a_lamb + 
-                          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
-      
-      // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
-      
-    }
-    
-    //Interaction Effects and Related Parameters. #####
-    
-    arma::mat qf_stor_int(K, 2, fill::ones);
+    arma::mat cov_effect_stor(MC, p_cov, fill::zeros);
     
     for(int k=0; k<K; ++k){
       
+      // Obtain inverse index (u,v)
+      
+      int u = map_k_to_uv(k,1);
+      int v = map_k_to_uv(k,2);
+      
+      // Initialize rank 1 components
+      
       if(zero_ind(k) == 1){
         
-        // Obtain inverse index (u,v)
+        (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
         
-        int u = map_k_to_uv(k,1);
-        int v = map_k_to_uv(k,2);
+        arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+        arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+        arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+        arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
         
-        // Remove index k and sum up other interactions
+        arma::vec pos_part = pos_part1 % pos_part2;
+        arma::vec neg_part = neg_part1 % neg_part2;
         
-        arma::mat dummy_all_int = all_interactions;
-        dummy_all_int.shed_col(k);
-        arma::vec all_interaction_sum_notk = sum(dummy_all_int, 1);
-        
-        // Sample interaction k
-        
-        arma::vec R_IE_k = y - ((ME_mat * sampler_ME) +
-                               (all_interaction_sum_notk));
-        
-        // Define old_param for sampling
-        
-        arma::vec old_param((4*IE_nspl + 1), fill::zeros);
-        
-        old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
-        old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
-        old_param(span(2*IE_nspl, (3*IE_nspl)-1)) = IE_pos_phi1.slice(k).row(m-1).t();
-        old_param(span(3*IE_nspl, (4*IE_nspl)-1)) = IE_neg_phi2.slice(k).row(m-1).t();
-        old_param(4*IE_nspl) = log(IE_pen(m-1,k));
-        
-        // Do the sampling
-        
-        Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
-                                          IE_list.slice(u), 
-                                          IE_list.slice(v), 
-                          IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
-                          IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
-                                          SigmaInt_inv,
-                                          SigmaInt_inv,
-                                          sigmasq_stor(m-1),
-                                          old_param,
-                                          eps_MALA(k),
-                                          c_HMC,
-                                          L_HMC);
-        
-        accept_MALA(m,k) = sq_MALA_k["accept"];
-        arma::vec whole_coeff = sq_MALA_k["sampled_param"];
-        int len_psi = (whole_coeff.n_elem - 1)/4;
-        arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
-        
-        IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
-        IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
-        IE_pos_phi1.slice(k).row(m) = whole_coeff_psi(span(2*len_psi, 3*len_psi-1)).t();
-        IE_neg_phi2.slice(k).row(m) = whole_coeff_psi(span(3*len_psi, 4*len_psi-1)).t();
-        IE_pen(m,k) = exp(whole_coeff(4*len_psi));
-        
-        // Update the interaction matrix
-        
-        arma::vec Ppart1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(m).t());
-        arma::vec Ppart2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(m).t());
-        arma::vec Npart1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(m).t());
-        arma::vec Npart2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(m).t());
-        
-        arma::vec Ppart = Ppart1 % Ppart2;
-        arma::vec Npart = Npart1 % Npart2;
-        
-        all_interactions.col(k) = Ppart - Npart; 
-        
-        // Update other parameters
-        
-        arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
-          IE_pos_theta1.slice(k).row(m).t()));
-        double c_1k1 = c_1k1_mat(0,0);
-        
-        arma::mat c_1k2_mat = 0.5*(IE_pos_phi1.slice(k).row(m) * (SigmaInt_inv *
-          IE_pos_phi1.slice(k).row(m).t()));
-        double c_1k2 = c_1k2_mat(0,0);
-        
-        double c_1k = c_1k1 + c_1k2;
-        
-        arma::mat c_2k1_mat = 0.5*(IE_neg_theta2.slice(k).row(m) * (SigmaInt_inv *
-          IE_neg_theta2.slice(k).row(m).t()));
-        double c_2k1 = c_2k1_mat(0,0);
-        
-        arma::mat c_2k2_mat = 0.5*(IE_neg_phi2.slice(k).row(m) * (SigmaInt_inv *
-          IE_neg_phi2.slice(k).row(m).t()));
-        double c_2k2 = c_2k2_mat(0,0);
-        
-        double c_2k = c_2k1 + c_2k2;
-        
-        // Sample \tau_1^2 | a and a | \tau_1^2
-        
-        double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
-                             (c_1k/IE_scale_deltasq(m-1));
-        
-        IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
-        IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
-        
-        // Sample \tau_2^2 | b and b | \tau_2^2
-        
-        double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
-                             (c_2k/IE_scale_deltasq(m-1));
-        
-        IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
-        IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
-        
-        //Store qf/tau^2
-        
-        qf_stor_int(k,0) = c_1k / IE_scale_tausq1(m,k);
-        qf_stor_int(k,1) = c_2k / IE_scale_tausq2(m,k);
+        all_interactions.col(k) = pos_part - neg_part;
         
       }
       
-      // Sample \delta^2 | \nu and \nu | \delta^2
-      
-      double deltasq_shape = (2*IE_nspl*K) + 0.5;
-      double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
-
-      IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
-      IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
-      
-      // IE_scale_deltasq(m) = 1.0;
-      
-      // Sample error variance
-      
-      arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
-      sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
-      
     }
     
-    if((m >= 199) && (m < cutoff)){
+    arma::mat accept_MALA(MC, K, fill::zeros);
+    accept_MALA.row(0) = vec(K, fill::ones).t();
+    
+    //Begin MCMC sampling. 
+    
+    arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
+    whole_prec(0,0) = 0.001;
+    whole_prec.submat(1, 1, p_cov, p_cov) = 0.001 * eye(p_cov, p_cov);
+    
+    for(int m=1; m<MC; ++m){
       
-      if(m % 100 == 0){
+      // //Sample (\alpha, \sigma^2) | - 
+      // 
+      // arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
+      //                       (sum(all_interactions, 1)) +
+      //                       (Z * cov_effect_stor.row(m-1).t()));
+      // 
+      // sigmasq_stor(m) = sigmasq_sampler(R_int_sigsq, n);
+      // alpha_stor(m) = intercept_sampler(R_int_sigsq, n, sigmasq_stor(m));
+      
+      ////Main Effects and Related Parameters (intercept, sigma^2)
+      
+      arma::vec R_ME = y - sum(all_interactions, 1);
+      
+      arma::mat mat_ME_scales(p, p, fill::zeros);
+      mat_ME_scales.diag() = ME_scale_stor.row(m-1).t();
+      
+      arma::mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
+      
+      whole_prec.submat(p_cov+1, p_cov+1, 
+                        ((p*ME_nspl)+p_cov), ((p*ME_nspl)+p_cov)) = Psi_ME_inv;
+      
+      arma::vec sampler_ME = maineffects_sampler(R_ME, 
+                                                 ME_mat, 
+                                                 whole_prec,
+                                                 sigmasq_stor(m-1));
+      
+      alpha_stor(m) = sampler_ME(0);
+      cov_effect_stor.row(m) = sampler_ME(span(1, p_cov)).t();
+      ME_coeff_stor.row(m) = sampler_ME(span(p_cov+1,p_cov+(p*ME_nspl))).t();
+      
+      //Sample \lambda_j = scale of \beta_j ####
+      
+      arma::vec qf_stor(p, fill::ones);
+      
+      for(int j=0; j<p; ++j){
         
-        for(int k1=0; k1<K; ++k1){
+        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
+        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
+        qf_stor(j) = qf_j(0,0);
+        
+        ME_scale_stor(m,j) = random_gamma(a_lamb + 
+          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
+        
+        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
+        
+      }
+      
+      //Interaction Effects and Related Parameters. #####
+      
+      arma::mat qf_stor_int(K, 2, fill::ones);
+      
+      for(int k=0; k<K; ++k){
+        
+        if(zero_ind(k) == 1){
           
-          if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
+          // Obtain inverse index (u,v)
+          
+          int u = map_k_to_uv(k,1);
+          int v = map_k_to_uv(k,2);
+          
+          // Remove index k and sum up other interactions
+          
+          arma::mat dummy_all_int = all_interactions;
+          dummy_all_int.shed_col(k);
+          arma::vec all_interaction_sum_notk = sum(dummy_all_int, 1);
+          
+          // Sample interaction k
+          
+          arma::vec R_IE_k = y - ((ME_mat * sampler_ME) +
+            (all_interaction_sum_notk));
+          
+          // Define old_param for sampling
+          
+          arma::vec old_param((4*IE_nspl + 1), fill::zeros);
+          
+          old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
+          old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
+          old_param(span(2*IE_nspl, (3*IE_nspl)-1)) = IE_pos_phi1.slice(k).row(m-1).t();
+          old_param(span(3*IE_nspl, (4*IE_nspl)-1)) = IE_neg_phi2.slice(k).row(m-1).t();
+          old_param(4*IE_nspl) = log(IE_pen(m-1,k));
+          
+          // Do the sampling
+          
+          Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                            IE_list.slice(u), 
+                                            IE_list.slice(v), 
+                                            IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
+                                            IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
+                                            SigmaInt_inv,
+                                            SigmaInt_inv,
+                                            sigmasq_stor(m-1),
+                                            old_param,
+                                            eps_MALA(k),
+                                            c_HMC,
+                                            L_HMC);
+          
+          accept_MALA(m,k) = sq_MALA_k["accept"];
+          arma::vec whole_coeff = sq_MALA_k["sampled_param"];
+          int len_psi = (whole_coeff.n_elem - 1)/4;
+          arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
+          
+          IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
+          IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
+          IE_pos_phi1.slice(k).row(m) = whole_coeff_psi(span(2*len_psi, 3*len_psi-1)).t();
+          IE_neg_phi2.slice(k).row(m) = whole_coeff_psi(span(3*len_psi, 4*len_psi-1)).t();
+          IE_pen(m,k) = exp(whole_coeff(4*len_psi));
+          
+          // Update the interaction matrix
+          
+          arma::vec Ppart1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(m).t());
+          arma::vec Ppart2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(m).t());
+          arma::vec Npart1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(m).t());
+          arma::vec Npart2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(m).t());
+          
+          arma::vec Ppart = Ppart1 % Ppart2;
+          arma::vec Npart = Npart1 % Npart2;
+          
+          all_interactions.col(k) = Ppart - Npart; 
+          
+          // Update other parameters
+          
+          arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
+            IE_pos_theta1.slice(k).row(m).t()));
+          double c_1k1 = c_1k1_mat(0,0);
+          
+          arma::mat c_1k2_mat = 0.5*(IE_pos_phi1.slice(k).row(m) * (SigmaInt_inv *
+            IE_pos_phi1.slice(k).row(m).t()));
+          double c_1k2 = c_1k2_mat(0,0);
+          
+          double c_1k = c_1k1 + c_1k2;
+          
+          arma::mat c_2k1_mat = 0.5*(IE_neg_theta2.slice(k).row(m) * (SigmaInt_inv *
+            IE_neg_theta2.slice(k).row(m).t()));
+          double c_2k1 = c_2k1_mat(0,0);
+          
+          arma::mat c_2k2_mat = 0.5*(IE_neg_phi2.slice(k).row(m) * (SigmaInt_inv *
+            IE_neg_phi2.slice(k).row(m).t()));
+          double c_2k2 = c_2k2_mat(0,0);
+          
+          double c_2k = c_2k1 + c_2k2;
+          
+          // Sample \tau_1^2 | a and a | \tau_1^2
+          
+          double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
+            (c_1k/IE_scale_deltasq(m-1));
+          
+          IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
+          IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
+          
+          // Sample \tau_2^2 | b and b | \tau_2^2
+          
+          double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
+            (c_2k/IE_scale_deltasq(m-1));
+          
+          IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
+          IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
+          
+          //Store qf/tau^2
+          
+          qf_stor_int(k,0) = c_1k / IE_scale_tausq1(m,k);
+          qf_stor_int(k,1) = c_2k / IE_scale_tausq2(m,k);
+          
+        }
+        
+        // Sample \delta^2 | \nu and \nu | \delta^2
+        
+        double deltasq_shape = (2*IE_nspl*K) + 0.5;
+        double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+        
+        IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
+        IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
+        
+        // IE_scale_deltasq(m) = 1.0;
+        
+        // Sample error variance
+        
+        arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
+        sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
+        
+      }
+      
+      if((m >= 199) && (m < cutoff)){
+        
+        if(m % 100 == 0){
+          
+          for(int k1=0; k1<K; ++k1){
             
-            eps_MALA(k1) = eps_MALA(k1)*accept_scale;
-            
-          }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
-            
-            eps_MALA(k1) = eps_MALA(k1)/accept_scale;
-            
-          }else{
-            
-            eps_MALA(k1) = eps_MALA(k1);
+            if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
+              
+              eps_MALA(k1) = eps_MALA(k1)*accept_scale;
+              
+            }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
+              
+              eps_MALA(k1) = eps_MALA(k1)/accept_scale;
+              
+            }else{
+              
+              eps_MALA(k1) = eps_MALA(k1);
+              
+            }
             
           }
           
         }
         
+      }  
+      
+      if((m+1) % 1000 == 0){
+        
+        Rcpp::Rcout << "Monte Carlo Sample: " << m+1 << std::endl;
+        
       }
+      
+      // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
+      // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
+      // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
       
     }  
     
-    if((m+1) % 1000 == 0){
-      
-      Rcpp::Rcout << "Monte Carlo Sample: " << m+1 << std::endl;
+    // #### Special case p = 2 ####
+    //                         
+    //                         if(m %% 200 == 0)
+    //                         {
+    //                           
+    //                           if(max(mean(accept_MALA[(m-199):m])) <= 0.5)
+    //                           {
+    //                             
+    //                             eps_MALA = 0.9*eps_MALA
+    //                             
+    //                           }
+    //                           else if(min(mean(accept_MALA[(m-199):m])) >= 0.9)
+    //                           {
+    //                             
+    //                             eps_MALA = eps_MALA/0.9
+    //                             
+    //                           }else
+    //                           {
+    //                             
+    //                             eps_MALA = eps_MALA
+    //                             
+    //                           }
+    //                           
+    //                         }
+    //                         
+    //         }
     
+    return Rcpp::List::create(Rcpp::Named("intercept") = alpha_stor,
+                              Rcpp::Named("error_var") = sigmasq_stor,
+                              Rcpp::Named("ME_coeff") = ME_coeff_stor,
+                              Rcpp::Named("ME_scale") = ME_scale_stor,
+                              Rcpp::Named("IE_pos_coeff_part1") = IE_pos_theta1,
+                              Rcpp::Named("IE_pos_coeff_part2") = IE_pos_phi1,
+                              Rcpp::Named("IE_neg_coeff_part1") = IE_neg_theta2,
+                              Rcpp::Named("IE_neg_coeff_part2") =  IE_neg_phi2,
+                              Rcpp::Named("cov_effects") = cov_effect_stor,
+                              Rcpp::Named("ME_mat") = ME_mat,
+                              Rcpp::Named("IE_list") = IE_list,
+                              Rcpp::Named("Accept_Prop") = accept_MALA,
+                              Rcpp::Named("HMC_epsilon") = eps_MALA,
+                              Rcpp::Named("IE_penalty") = IE_pen,
+                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
+  }else{
+    
+    for(int k=0; k<K; ++k){
+      
+      // Obtain inverse index (u,v)
+      
+      int u = map_k_to_uv(k,1);
+      int v = map_k_to_uv(k,2);
+      
+      // Initialize rank 1 components
+      
+      if(zero_ind(k) == 1){
+        
+        (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+         0.1*SigmaInt).t();
+        
+        arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+        arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+        arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+        arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+        
+        arma::vec pos_part = pos_part1 % pos_part2;
+        arma::vec neg_part = neg_part1 % neg_part2;
+        
+        all_interactions.col(k) = pos_part - neg_part;
+        
+      }
+      
     }
     
-    // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
-    // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
-    // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
+    arma::mat accept_MALA(MC, K, fill::zeros);
+    accept_MALA.row(0) = vec(K, fill::ones).t();
     
-  }  
+    //Begin MCMC sampling. 
+    
+    arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
+    whole_prec(0,0) = 0.001;
+    
+    for(int m=1; m<MC; ++m){
+      
+      // //Sample (\alpha, \sigma^2) | - 
+      // 
+      // arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
+      //                       (sum(all_interactions, 1)) +
+      //                       (Z * cov_effect_stor.row(m-1).t()));
+      // 
+      // sigmasq_stor(m) = sigmasq_sampler(R_int_sigsq, n);
+      // alpha_stor(m) = intercept_sampler(R_int_sigsq, n, sigmasq_stor(m));
+      
+      ////Main Effects and Related Parameters (intercept, sigma^2)
+      
+      arma::vec R_ME = y - sum(all_interactions, 1);
+      
+      arma::mat mat_ME_scales(p, p, fill::zeros);
+      mat_ME_scales.diag() = ME_scale_stor.row(m-1).t();
+      
+      arma::mat Psi_ME_inv = kron(mat_ME_scales, SigmaME_inv);
+      
+      whole_prec.submat(p_cov+1, p_cov+1, 
+                        ((p*ME_nspl)+p_cov), ((p*ME_nspl)+p_cov)) = Psi_ME_inv;
+      
+      arma::vec sampler_ME = maineffects_sampler(R_ME, 
+                                                 ME_mat, 
+                                                 whole_prec,
+                                                 sigmasq_stor(m-1));
+      
+      alpha_stor(m) = sampler_ME(0);
+      ME_coeff_stor.row(m) = sampler_ME(span(p_cov+1,p_cov+(p*ME_nspl))).t();
+      
+      //Sample \lambda_j = scale of \beta_j ####
+      
+      arma::vec qf_stor(p, fill::ones);
+      
+      for(int j=0; j<p; ++j){
+        
+        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
+        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
+        qf_stor(j) = qf_j(0,0);
+        
+        ME_scale_stor(m,j) = random_gamma(a_lamb + 
+          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
+        
+        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
+        
+      }
+      
+      //Interaction Effects and Related Parameters. #####
+      
+      arma::mat qf_stor_int(K, 2, fill::ones);
+      
+      for(int k=0; k<K; ++k){
+        
+        if(zero_ind(k) == 1){
+          
+          // Obtain inverse index (u,v)
+          
+          int u = map_k_to_uv(k,1);
+          int v = map_k_to_uv(k,2);
+          
+          // Remove index k and sum up other interactions
+          
+          arma::mat dummy_all_int = all_interactions;
+          dummy_all_int.shed_col(k);
+          arma::vec all_interaction_sum_notk = sum(dummy_all_int, 1);
+          
+          // Sample interaction k
+          
+          arma::vec R_IE_k = y - ((ME_mat * sampler_ME) +
+            (all_interaction_sum_notk));
+          
+          // Define old_param for sampling
+          
+          arma::vec old_param((4*IE_nspl + 1), fill::zeros);
+          
+          old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
+          old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
+          old_param(span(2*IE_nspl, (3*IE_nspl)-1)) = IE_pos_phi1.slice(k).row(m-1).t();
+          old_param(span(3*IE_nspl, (4*IE_nspl)-1)) = IE_neg_phi2.slice(k).row(m-1).t();
+          old_param(4*IE_nspl) = log(IE_pen(m-1,k));
+          
+          // Do the sampling
+          
+          Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                            IE_list.slice(u), 
+                                            IE_list.slice(v), 
+                                            IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
+                                            IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
+                                            SigmaInt_inv,
+                                            SigmaInt_inv,
+                                            sigmasq_stor(m-1),
+                                            old_param,
+                                            eps_MALA(k),
+                                            c_HMC,
+                                            L_HMC);
+          
+          accept_MALA(m,k) = sq_MALA_k["accept"];
+          arma::vec whole_coeff = sq_MALA_k["sampled_param"];
+          int len_psi = (whole_coeff.n_elem - 1)/4;
+          arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
+          
+          IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
+          IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
+          IE_pos_phi1.slice(k).row(m) = whole_coeff_psi(span(2*len_psi, 3*len_psi-1)).t();
+          IE_neg_phi2.slice(k).row(m) = whole_coeff_psi(span(3*len_psi, 4*len_psi-1)).t();
+          IE_pen(m,k) = exp(whole_coeff(4*len_psi));
+          
+          // Update the interaction matrix
+          
+          arma::vec Ppart1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(m).t());
+          arma::vec Ppart2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(m).t());
+          arma::vec Npart1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(m).t());
+          arma::vec Npart2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(m).t());
+          
+          arma::vec Ppart = Ppart1 % Ppart2;
+          arma::vec Npart = Npart1 % Npart2;
+          
+          all_interactions.col(k) = Ppart - Npart; 
+          
+          // Update other parameters
+          
+          arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
+            IE_pos_theta1.slice(k).row(m).t()));
+          double c_1k1 = c_1k1_mat(0,0);
+          
+          arma::mat c_1k2_mat = 0.5*(IE_pos_phi1.slice(k).row(m) * (SigmaInt_inv *
+            IE_pos_phi1.slice(k).row(m).t()));
+          double c_1k2 = c_1k2_mat(0,0);
+          
+          double c_1k = c_1k1 + c_1k2;
+          
+          arma::mat c_2k1_mat = 0.5*(IE_neg_theta2.slice(k).row(m) * (SigmaInt_inv *
+            IE_neg_theta2.slice(k).row(m).t()));
+          double c_2k1 = c_2k1_mat(0,0);
+          
+          arma::mat c_2k2_mat = 0.5*(IE_neg_phi2.slice(k).row(m) * (SigmaInt_inv *
+            IE_neg_phi2.slice(k).row(m).t()));
+          double c_2k2 = c_2k2_mat(0,0);
+          
+          double c_2k = c_2k1 + c_2k2;
+          
+          // Sample \tau_1^2 | a and a | \tau_1^2
+          
+          double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
+            (c_1k/IE_scale_deltasq(m-1));
+          
+          IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
+          IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
+          
+          // Sample \tau_2^2 | b and b | \tau_2^2
+          
+          double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
+            (c_2k/IE_scale_deltasq(m-1));
+          
+          IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
+          IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
+          
+          //Store qf/tau^2
+          
+          qf_stor_int(k,0) = c_1k / IE_scale_tausq1(m,k);
+          qf_stor_int(k,1) = c_2k / IE_scale_tausq2(m,k);
+          
+        }
+        
+        // Sample \delta^2 | \nu and \nu | \delta^2
+        
+        double deltasq_shape = (2*IE_nspl*K) + 0.5;
+        double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+        
+        IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
+        IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
+        
+        // IE_scale_deltasq(m) = 1.0;
+        
+        // Sample error variance
+        
+        arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
+        sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
+        
+      }
+      
+      if((m >= 199) && (m < cutoff)){
+        
+        if(m % 100 == 0){
+          
+          for(int k1=0; k1<K; ++k1){
+            
+            if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
+              
+              eps_MALA(k1) = eps_MALA(k1)*accept_scale;
+              
+            }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
+              
+              eps_MALA(k1) = eps_MALA(k1)/accept_scale;
+              
+            }else{
+              
+              eps_MALA(k1) = eps_MALA(k1);
+              
+            }
+            
+          }
+          
+        }
+        
+      }  
+      
+      if((m+1) % 1000 == 0){
+        
+        Rcpp::Rcout << "Monte Carlo Sample: " << m+1 << std::endl;
+        
+      }
+      
+      // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
+      // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
+      // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
+      
+    }  
+    
+    // #### Special case p = 2 ####
+    //                         
+    //                         if(m %% 200 == 0)
+    //                         {
+    //                           
+    //                           if(max(mean(accept_MALA[(m-199):m])) <= 0.5)
+    //                           {
+    //                             
+    //                             eps_MALA = 0.9*eps_MALA
+    //                             
+    //                           }
+    //                           else if(min(mean(accept_MALA[(m-199):m])) >= 0.9)
+    //                           {
+    //                             
+    //                             eps_MALA = eps_MALA/0.9
+    //                             
+    //                           }else
+    //                           {
+    //                             
+    //                             eps_MALA = eps_MALA
+    //                             
+    //                           }
+    //                           
+    //                         }
+    //                         
+    //         }
+    
+    return Rcpp::List::create(Rcpp::Named("intercept") = alpha_stor,
+                              Rcpp::Named("error_var") = sigmasq_stor,
+                              Rcpp::Named("ME_coeff") = ME_coeff_stor,
+                              Rcpp::Named("ME_scale") = ME_scale_stor,
+                              Rcpp::Named("IE_pos_coeff_part1") = IE_pos_theta1,
+                              Rcpp::Named("IE_pos_coeff_part2") = IE_pos_phi1,
+                              Rcpp::Named("IE_neg_coeff_part1") = IE_neg_theta2,
+                              Rcpp::Named("IE_neg_coeff_part2") =  IE_neg_phi2,
+                              Rcpp::Named("ME_mat") = ME_mat,
+                              Rcpp::Named("IE_list") = IE_list,
+                              Rcpp::Named("Accept_Prop") = accept_MALA,
+                              Rcpp::Named("HMC_epsilon") = eps_MALA,
+                              Rcpp::Named("IE_penalty") = IE_pen,
+                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
+    
+  }
   
-  // #### Special case p = 2 ####
-  //                         
-  //                         if(m %% 200 == 0)
-  //                         {
-  //                           
-  //                           if(max(mean(accept_MALA[(m-199):m])) <= 0.5)
-  //                           {
-  //                             
-  //                             eps_MALA = 0.9*eps_MALA
-  //                             
-  //                           }
-  //                           else if(min(mean(accept_MALA[(m-199):m])) >= 0.9)
-  //                           {
-  //                             
-  //                             eps_MALA = eps_MALA/0.9
-  //                             
-  //                           }else
-  //                           {
-  //                             
-  //                             eps_MALA = eps_MALA
-  //                             
-  //                           }
-  //                           
-  //                         }
-  //                         
-  //         }
   
-  return Rcpp::List::create(Rcpp::Named("intercept") = alpha_stor,
-                            Rcpp::Named("error_var") = sigmasq_stor,
-                            Rcpp::Named("ME_coeff") = ME_coeff_stor,
-                            Rcpp::Named("ME_scale") = ME_scale_stor,
-                            Rcpp::Named("IE_pos_coeff_part1") = IE_pos_theta1,
-                            Rcpp::Named("IE_pos_coeff_part2") = IE_pos_phi1,
-                            Rcpp::Named("IE_neg_coeff_part1") = IE_neg_theta2,
-                            Rcpp::Named("IE_neg_coeff_part2") =  IE_neg_phi2,
-                            Rcpp::Named("cov_effects") = cov_effect_stor,
-                            Rcpp::Named("ME_mat") = ME_mat,
-                            Rcpp::Named("IE_list") = IE_list,
-                            Rcpp::Named("Accept_Prop") = accept_MALA,
-                            Rcpp::Named("HMC_epsilon") = eps_MALA,
-                            Rcpp::Named("IE_penalty") = IE_pen,
-                            Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
   
 }
