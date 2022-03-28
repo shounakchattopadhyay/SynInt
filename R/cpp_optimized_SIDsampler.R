@@ -15,38 +15,17 @@
 
 # ### Univariate Penalty
 # 
-penmatt<-function(M)
-{
-
-  Amat = matrix(0, nrow = M, ncol = M)
-
-  Amat[1,] = c(1, rep(0, M-1))
-
-  for(i in 2:M)
-  {
-
-    Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
-
-  }
-
-  return(t(Amat) %*% Amat)
-
-}
-
-### Bivariate Penalty
-
 # penmatt<-function(M)
 # {
 # 
 #   Amat = matrix(0, nrow = M, ncol = M)
 # 
 #   Amat[1,] = c(1, rep(0, M-1))
-#   Amat[2,] = c(-2, 1, rep(0, M-2))
 # 
-#   for(i in 3:M)
+#   for(i in 2:M)
 #   {
 # 
-#     Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+#     Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
 # 
 #   }
 # 
@@ -54,12 +33,32 @@ penmatt<-function(M)
 # 
 # }
 
+### Bivariate Penalty
+
+penmatt<-function(M)
+{
+
+  Amat = matrix(0, nrow = M, ncol = M)
+
+  Amat[1,] = c(1, rep(0, M-1))
+  Amat[2,] = c(-2, 1, rep(0, M-2))
+
+  for(i in 3:M)
+  {
+
+    Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+
+  }
+
+  return(t(Amat) %*% Amat)
+
+}
 
 ##M+4 = #splines for main effects, N+3 = #splines for interaction tensor products
 
 SIMsampler<-function(y,
                      X, 
-                     Z, 
+                     Z = NULL, 
                      K_ME = 5,
                      K_IE = 2, 
                      a_lamb = 0.001,
@@ -88,7 +87,18 @@ SIMsampler<-function(y,
   
   n = dim(X)[1]
   p = dim(X)[2]
-  p_cov = dim(Z)[2]
+  
+  if(is.null(Z) == TRUE)
+  {
+    
+    p_cov = 0
+    
+  }else
+  {
+    
+    p_cov = dim(Z)[2]
+    
+  }
   
   #### B-Splines for computation ####
   
@@ -113,6 +123,9 @@ SIMsampler<-function(y,
   S_ME_inv = array(0, dim = c(nspl_ME, nspl_ME, p))
   S_IE_inv = array(0, dim = c(nspl_IE, nspl_IE, p))
   
+  ME_knots_stor = matrix(0, nrow = p, ncol = K_ME)
+  IE_knots_stor = matrix(0, nrow = p, ncol = K_IE)
+  
   ind = 1
   
   for(ind in 1:p)
@@ -126,6 +139,8 @@ SIMsampler<-function(y,
     quantile_seq_ME = quantile_seq_ME[-c(1,K_ME+2)]
     
     me_knots = quantile(X[,ind], quantile_seq_ME)
+    
+    ME_knots_stor[ind, ] = me_knots
     
     if(me_integral_constraint == TRUE)
     {
@@ -141,7 +156,6 @@ SIMsampler<-function(y,
       me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = FALSE)
       final_Xmat_ME = me_spl
       
-    
     }
     
     ME_list[,,ind] = final_Xmat_ME
@@ -154,6 +168,8 @@ SIMsampler<-function(y,
     quantile_seq_IE = quantile_seq_IE[-c(1,K_IE+2)]
     
     ie_knots = quantile(X[,ind], quantile_seq_IE)
+    
+    IE_knots_stor[ind, ] = ie_knots
     
     ie_spl = bSpline(x = X[,ind], knots = ie_knots, intercept = FALSE)
     
@@ -207,7 +223,6 @@ SIMsampler<-function(y,
   print(noquote(paste("########## Sampling initiated with MC = ", MC, " ########## ", sep = "")))
   
   SIM_model = SIDsampler_draws_adaptive_optimized(y, 
-                                                  Z, 
                                                   ME_mat, 
                                                   IE_list,
                                                   eps_MALA, 
@@ -234,8 +249,10 @@ SIMsampler<-function(y,
   
   print(noquote(paste("########## Sampling completed with MC = ", MC, " ########## ", sep = "")))
   
-  return(list("SIM_model"=SIM_model, 
-              "ME_list" = ME_list))
+  return(list("SIM_model" = SIM_model, 
+              "ME_list" = ME_list,
+              "ME_knots" = ME_knots_stor,
+              "IE_knots" = IE_knots_stor))
   
 }
 
