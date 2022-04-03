@@ -15,7 +15,9 @@ SIMsampler(y,
            a_lamb = 0.001,
            b_lamb = 0.001,
            eps_MALA = rep(0.01, choose(dim(X)[2], 2)), 
-           c_HMC = 1.0, L_HMC = 5, MC = 10000, 
+           c_HMC = 1.0, 
+           L_HMC = 5, 
+           MC = 10000, 
            zero_ind = rep(1, choose(dim(X)[2],2)), 
            me_integral_constraint = TRUE, 
            cutoff = 0.5*MC,
@@ -62,6 +64,10 @@ SIMsampler(y,
   \item{cov_effects}{MCMC samples of covariate effects.}
   \item{Accept_Prop}{HMC acceptance indicators.}
   \item{HMC_epsilon}{HMC vector of step-sizes after sampling.}
+  \item{ME_list}{Contains ME matrices.}
+  \item{ME_knots}{Contains ME knots.}
+  \item{IE_knots}{Contains IE knots.}
+  \item{data}{List returning original data (y, X, Z) along with n, p, and MC.}
 }
 
 \references{
