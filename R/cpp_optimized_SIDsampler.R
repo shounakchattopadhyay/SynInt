@@ -1,36 +1,21 @@
-#### Load Packages ####
+### Univariate Penalty
 
-# library(bayesplot)
-# library(MASS)
-# library(splines)
-# library(gam)
-# library(splines2)
-# library(truncnorm)
-# library(mvtnorm)
-# library(Rcpp)
-# library(RcppArmadillo)
-
-#source("penmatt.R")
-#sourceCpp("cpp_MCMCSampler_adaptive_optimized.cpp")
-
-# ### Univariate Penalty
-# 
 # penmatt<-function(M)
 # {
-# 
+#
 #   Amat = matrix(0, nrow = M, ncol = M)
-# 
+#
 #   Amat[1,] = c(1, rep(0, M-1))
-# 
+#
 #   for(i in 2:M)
 #   {
-# 
+#
 #     Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
-# 
+#
 #   }
-# 
+#
 #   return(t(Amat) %*% Amat)
-# 
+#
 # }
 
 ### Bivariate Penalty
@@ -54,6 +39,334 @@ penmatt<-function(M)
 
 }
 
+SIMinit<-function(y, X, Z = NULL, ME_list, IE_list, zero_ind, nugget,
+                  me_integral_constraint = TRUE)
+{
+  
+  library(MASS)
+  library(randomForest)
+  
+  #### Fit a linear model ####
+  
+  p_cov = ifelse(is.null(Z) == TRUE, 0, dim(Z)[2])
+  
+  if(p_cov > 0)
+  {
+    
+    lm_mod = lm(y ~ Z - 1)
+    cov_effect_est = lm_mod$coefficients
+    
+    R = y - (Z %*% cov_effect_est)
+    
+  }else
+  {
+    
+    R = y
+    
+  }
+  
+  #### Fit random forest on R ####
+  
+  RFmodel = randomForest::randomForest(x = X, y = R)
+  
+  if(me_integral_constraint == TRUE)
+  {
+    
+    ## Extract the main effect coefficients ##
+    
+    n = dim(X)[1]
+    p = dim(X)[2]
+    nspl_ME = dim(ME_list)[2]
+    
+    overall_int = rep(0, p)
+    
+    ME_coeff_est_mat = matrix(0, nrow = nspl_ME, ncol = p)
+    
+    for(j in 1:p)
+    {
+      
+      Xtest_j = matrix(0, nrow = n, ncol = p)
+      Xtest_j[,j] = X[,j]
+      RF_ME_j_11 = predict(RFmodel, newdata = Xtest_j)
+      
+      overall_int[j] = mean(RF_ME_j_11)
+      
+      ME_j = RF_ME_j_11 - overall_int[j]
+      
+      M_j = ME_list[,,j]
+      
+      ME_coeff_est_mat[,j] = ginv(M_j) %*% ME_j
+        
+      # ME_coeff_est_mat[,j] = solve((t(M_j) %*% M_j) + (nugget * diag(nspl_ME))) %*%
+      #   t(M_j) %*% ME_j
+      
+    }
+    
+    ## Extract the intercept term ##
+    
+    RF_intercept = predict(RFmodel, newdata = rep(0, p))
+    intercept_est = sum(overall_int) - ((p-1) * RF_intercept)
+    
+    ## Extract the interaction effect coefficients ##
+    
+    nspl_IE = dim(IE_list)[2]
+    pos_coeff_part1_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    pos_coeff_part2_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part1_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part2_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    
+    # for(k in 1:choose(p,2))
+    # {
+    # 
+    #   if(zero_ind[k] == 1)
+    #   {
+    # 
+    #     #Obtain inverse index (u,v)
+    # 
+    #     quad_dis = (2*p - 1)^2 - 8*k
+    #     u = ceiling(0.5*((2*p-1) - quad_dis^0.5))
+    #     v = p + k - (u*(p - 0.5*(u+1)))
+    # 
+    #     # Extract (u,v)-th interaction estimate #
+    # 
+    #     S_u = IE_list[,,u]
+    #     S_v = IE_list[,,v]
+    # 
+    #     mat_uv_11 = matrix(0, nrow = n, ncol = p)
+    #     mat_uv_10 = matrix(0, nrow = n, ncol = p)
+    #     mat_uv_01 = matrix(0, nrow = n, ncol = p)
+    # 
+    #     mat_uv_11[,u] = X[,u]
+    #     mat_uv_11[,v] = X[,v]
+    # 
+    #     mat_uv_10[,u] = X[,u]
+    #     mat_uv_01[,v] = X[,v]
+    # 
+    #     int_est_uv_11 = predict(RFmodel, newdata = mat_uv_11)
+    #     int_est_uv_10 = predict(RFmodel, newdata = mat_uv_10)
+    #     int_est_uv_01 = predict(RFmodel, newdata = mat_uv_01)
+    # 
+    #     int_est_uv = int_est_uv_11 -
+    #       int_est_uv_10 -
+    #       int_est_uv_01 +
+    #       rep(RF_intercept, n)
+    # 
+    #     # Extract positive part coefficients #
+    # 
+    #     pos_uv = sapply(int_est_uv, max, 0)
+    # 
+    #     pos_uv_part1 = pos_uv^(0.25)
+    #     pos_uv_part2 = pos_uv^(0.25)
+    # 
+    #     # pos_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+    #     #   t(S_u) %*% pos_uv_part1
+    #     #
+    #     # pos_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+    #     #   t(S_v) %*% pos_uv_part2
+    # 
+    #     pos_coeff_part1_int[,k] = ginv(S_u) %*% pos_uv_part1
+    # 
+    #     pos_coeff_part2_int[,k] = ginv(S_v) %*% pos_uv_part2
+    # 
+    #     # Extract negative part coefficients #
+    # 
+    #     neg_uv = sapply(-int_est_uv, max, 0)
+    # 
+    #     neg_uv_part1 = neg_uv^(0.25)
+    #     neg_uv_part2 = neg_uv^(0.25)
+    # 
+    #     # neg_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+    #     #   t(S_u) %*% neg_uv_part1
+    #     #
+    #     # neg_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+    #     #   t(S_v) %*% neg_uv_part2
+    # 
+    #     neg_coeff_part1_int[,k] = ginv(S_u) %*% neg_uv_part1
+    # 
+    #     neg_coeff_part2_int[,k] = ginv(S_v) %*% neg_uv_part2
+    # 
+    #   }
+    # 
+    # }
+    
+    ## Extract the variance estimate ##
+    
+    whole_sur_est = predict(RFmodel, newdata = X)
+    
+    sigmasq_est = mean((y - whole_sur_est)^2)
+    
+    if(p_cov > 0)
+    {
+      
+      init_list = list("cov_effect_est" = cov_effect_est,
+                       "intercept_est" = intercept_est,
+                       "sigmasq_est" = sigmasq_est,
+                       "ME_coeff_est" = c(ME_coeff_est_mat),
+                       "IE_pos_part1_coeff_est" = pos_coeff_part1_int,
+                       "IE_pos_part2_coeff_est" = pos_coeff_part2_int,
+                       "IE_neg_part1_coeff_est" = neg_coeff_part1_int,
+                       "IE_neg_part2_coeff_est" = neg_coeff_part2_int)
+      
+    }else
+    {
+      
+      init_list = list("intercept_est" = intercept_est,
+                       "sigmasq_est" = sigmasq_est,
+                       "ME_coeff_est" = c(ME_coeff_est_mat),
+                       "IE_pos_part1_coeff_est" = pos_coeff_part1_int,
+                       "IE_pos_part2_coeff_est" = pos_coeff_part2_int,
+                       "IE_neg_part1_coeff_est" = neg_coeff_part1_int,
+                       "IE_neg_part2_coeff_est" = neg_coeff_part2_int)
+      
+    }
+    
+    return(init_list)
+    
+  }else
+  {
+    
+    ## Extract the intercept ##
+    
+    RF_intercept = predict(RFmodel, newdata = rep(0, p))
+    intercept_est = RF_intercept
+    
+    ## Extract the main effect coefficients ##
+    
+    n = dim(X)[1]
+    p = dim(X)[2]
+    nspl_ME = dim(ME_list)[2]
+    
+    ME_coeff_est_mat = matrix(0, nrow = nspl_ME, ncol = p)
+    
+    for(j in 1:p)
+    {
+      
+      Xtest_j = matrix(0, nrow = n, ncol = p)
+      Xtest_j[,j] = X[,j]
+      RF_ME_j_11 = predict(RFmodel, newdata = Xtest_j)
+      
+      ME_j = RF_ME_j_11 - rep(intercept_est, n)
+      
+      M_j = ME_list[,,j]
+      
+      ME_coeff_est_mat[,j] = solve((t(M_j) %*% M_j) + (nugget * diag(nspl_ME))) %*%
+        t(M_j) %*% ME_j
+      
+    }
+    
+    ## Extract the interaction effect coefficients ##
+    
+    nspl_IE = dim(IE_list)[2]
+    pos_coeff_part1_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
+    pos_coeff_part2_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part1_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part2_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
+    
+    for(k in 1:choose(p,2))
+    {
+      
+      if(zero_ind[k] == 1)
+      {
+        
+        #Obtain inverse index (u,v)
+        
+        quad_dis = (2*p - 1)^2 - 8*k
+        u = ceiling(0.5*((2*p-1) - quad_dis^0.5))
+        v = p + k - (u*(p - 0.5*(u+1)))
+        
+        # Extract (u,v)-th interaction estimate #
+        
+        S_u = IE_list[,,u]
+        S_v = IE_list[,,v]
+        
+        mat_uv_11 = matrix(0, nrow = n, ncol = p)
+        mat_uv_10 = matrix(0, nrow = n, ncol = p)
+        mat_uv_01 = matrix(0, nrow = n, ncol = p)
+        
+        mat_uv_11[,u] = X[,u]
+        mat_uv_11[,v] = X[,v]
+        
+        mat_uv_10[,u] = X[,u]
+        mat_uv_01[,v] = X[,v]
+        
+        int_est_uv_11 = predict(RFmodel, newdata = mat_uv_11)
+        int_est_uv_10 = predict(RFmodel, newdata = mat_uv_10)
+        int_est_uv_01 = predict(RFmodel, newdata = mat_uv_01)
+        
+        int_est_uv = int_est_uv_11 -
+          int_est_uv_10 -
+          int_est_uv_01 +
+          rep(intercept_est, n)
+        
+        # Extract positive part coefficients #
+        
+        pos_uv = sapply(int_est_uv, max, 0)
+        
+        pos_uv_part1 = pos_uv^(0.25)
+        pos_uv_part2 = pos_uv^(0.25)
+        
+        pos_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+          t(S_u) %*% pos_uv_part1
+        
+        pos_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+          t(S_v) %*% pos_uv_part2
+        
+        # Extract negative part coefficients #
+        
+        neg_uv = sapply(-int_est_uv, max, 0)
+        
+        neg_uv_part1 = neg_uv^(0.25)
+        neg_uv_part2 = neg_uv^(0.25)
+        
+        neg_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+          t(S_u) %*% neg_uv_part1
+        
+        neg_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+          t(S_v) %*% neg_uv_part2
+        
+      }
+      
+    }
+    
+    ## Extract the variance estimate ##
+    
+    whole_sur_est = predict(RFmodel, newdata = X)
+    
+    sigmasq_est = mean((y - whole_sur_est)^2)
+    
+    if(p_cov > 0)
+    {
+      
+      init_list = list("cov_effect_est" = cov_effect_est,
+                       "intercept_est" = intercept_est,
+                       "sigmasq_est" = sigmasq_est,
+                       "ME_coeff_est" = c(ME_coeff_est_mat),
+                       "IE_pos_part1_coeff_est" = pos_coeff_part1_int,
+                       "IE_pos_part2_coeff_est" = pos_coeff_part2_int,
+                       "IE_neg_part1_coeff_est" = neg_coeff_part1_int,
+                       "IE_neg_part2_coeff_est" = neg_coeff_part2_int)
+      
+    }else
+    {
+      
+      init_list = list("intercept_est" = intercept_est,
+                       "sigmasq_est" = sigmasq_est,
+                       "ME_coeff_est" = c(ME_coeff_est_mat),
+                       "IE_pos_part1_coeff_est" = pos_coeff_part1_int,
+                       "IE_pos_part2_coeff_est" = pos_coeff_part2_int,
+                       "IE_neg_part1_coeff_est" = neg_coeff_part1_int,
+                       "IE_neg_part2_coeff_est" = neg_coeff_part2_int)
+      
+    }
+    
+    return(init_list)
+    
+  }
+  
+  
+  
+}
+
 ##M+4 = #splines for main effects, N+3 = #splines for interaction tensor products
 
 SIMsampler<-function(y,
@@ -63,7 +376,7 @@ SIMsampler<-function(y,
                      K_IE = 2, 
                      a_lamb = 0.001,
                      b_lamb = 0.001,
-                     eps_MALA = rep(0.01, choose(dim(X)[2], 2)),
+                     eps_MALA = rep(0.1, choose(dim(X)[2], 2)),
                      c_HMC = 1, 
                      L_HMC = 5, 
                      MC = 10000,
@@ -72,7 +385,8 @@ SIMsampler<-function(y,
                      cutoff = 0.5*MC,
                      accept_low = 0.65,
                      accept_high = 0.9,
-                     accept_scale = 0.8){
+                     accept_scale = 0.8,
+                     precond = 1){
   
   library(MASS)
   library(splines)
@@ -148,7 +462,6 @@ SIMsampler<-function(y,
       me_spl = bSpline(x = X[,ind], knots = me_knots, intercept = TRUE)
       ME_subtract[ind,] = colMeans(me_spl)
       final_Xmat_ME = sweep(me_spl, 2,  ME_subtract[ind,])
-      
     
     }else
     {
@@ -220,6 +533,14 @@ SIMsampler<-function(y,
   # SigmaInt = diag(nspl_IE)
   # SigmaInt_inv = diag(nspl_IE)
   
+  init_values = SIMinit(y = y,
+                        X = X, 
+                        Z = Z,
+                        ME_list = ME_list, 
+                        IE_list = IE_list, 
+                        zero_ind = zero_ind, 
+                        nugget = 0.01)
+  
   print(noquote(paste("########## Sampling initiated with MC = ", MC, " ########## ", sep = "")))
   
   SIM_model = SIDsampler_draws_adaptive_optimized(y, 
@@ -245,7 +566,9 @@ SIMsampler<-function(y,
                                                   accept_high,
                                                   accept_scale,
                                                   a_lamb,
-                                                  b_lamb)
+                                                  b_lamb,
+                                                  init_values,
+                                                  precond)
   
   print(noquote(paste("########## Sampling completed with MC = ", MC, " ########## ", sep = "")))
   
@@ -253,7 +576,8 @@ SIMsampler<-function(y,
               "ME_list" = ME_list,
               "ME_knots" = ME_knots_stor,
               "IE_knots" = IE_knots_stor,
-              "data" = list("y" = y, "X" = X, "Z" = Z, "n" = n, "p" = p, "MC" = MC)))
+              "data" = list("y" = y, "X" = X, "Z" = Z, "n" = n, "p" = p, "MC" = MC),
+              "init_values" = init_values))
   
 }
 

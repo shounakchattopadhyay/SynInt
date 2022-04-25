@@ -47,11 +47,10 @@ double pot_MALA(arma::vec R,
                 arma::mat X1, 
                 arma::mat X2, 
                 arma::vec param, 
-                double tau1sq, 
-                double tau2sq, 
                 arma::mat S1, 
                 arma::mat S2, 
-                double sigma_sq){
+                double sigma_sq,
+                double delta_sq){
   
   int M = X1.n_cols;
   int n = X1.n_rows;
@@ -61,8 +60,13 @@ double pot_MALA(arma::vec R,
   arma::vec phi1 = param(span((2*M), (3*M)-1));
   arma::vec phi2 = param(span((3*M), (4*M) - 1));
   
-  double kappa = param((4*M));
+  double kappa = param(4*M);
   double pen_param = exp(kappa);
+  
+  double logtau1 = param(4*M + 1);
+  double tau1sq = exp(2 * logtau1);
+  double logtau2 = param(4*M + 2);
+  double tau2sq = exp(2 * logtau2);
     
   arma::vec mainpart11 = X1 * theta1;
   arma::vec mainpart12 = X2 * phi1;
@@ -90,21 +94,15 @@ double pot_MALA(arma::vec R,
   arma::mat c_22mat = 0.5*(phi2.t() * (S2 * phi2));
   double c_22 = c_22mat(0,0);
   
-  // penalty_term = mean(mainpart1^2 * mainpart2^2)
-  // penalty_term = mean((Pfn + Nfn)^2)
-  // penalty_term = mean((mainpart1^2) + (mainpart2^2) + (mainpart1^2 * mainpart2^2))
-  // penalty_term = mean(Pfn1) * mean(Pfn2) * mean(Nfn1) * mean(Nfn2)
-    
   double penalty_term = mean(Pfn) * mean(Nfn);
   
-  // penalty_term = (mean(Pfn * Nfn))^2 / pen_param
-      
-  double pot_prior = ((c_11+c_12) / tau1sq) + 
-              ((c_21+c_22) / tau2sq) + 
-              (0.5*log(1 + (penalty_term / pen_param))) +
-              (pen_param - (0.5*log(pen_param))); 
-        
-  // Last line = prior for kappa = log(kappa)
+  double pot_prior = ((c_11+c_12) / (tau1sq * delta_sq)) +
+    ((c_21+c_22) / (tau2sq * delta_sq)) +
+    ((2 * M * logtau1) - (logtau1 - log(1 + tau1sq))) +
+    ((2 * M * logtau2) - (logtau2 - log(1 + tau2sq))) +
+    ((-0.5 * log(pen_param)) + pen_param + (0.5 * log(1 + (penalty_term / pen_param))));
+  
+  // Last line = prior for log(pen_param)
         
   double pot_total = pot_lik + pot_prior;
       
@@ -116,12 +114,11 @@ double pot_MALA(arma::vec R,
 arma::vec grad_MALA(arma::vec R, 
                     arma::mat X1, 
                     arma::mat X2, 
-                    arma::vec param, 
-                    double tau1sq, 
-                    double tau2sq, 
+                    arma::vec param,
                     arma::mat S1, 
                     arma::mat S2, 
-                    double sigma_sq){
+                    double sigma_sq,
+                    double delta_sq){
   
   int M = X1.n_cols;
   int n = X1.n_rows;
@@ -131,8 +128,13 @@ arma::vec grad_MALA(arma::vec R,
   arma::vec phi1 = param(span((2*M), (3*M)-1));
   arma::vec phi2 = param(span((3*M), (4*M) - 1));
   
-  double kappa = param((4*M));
+  double kappa = param(4*M);
   double pen_param = exp(kappa);
+  
+  double logtau1 = param(4*M + 1);
+  double tau1sq = exp(2 * logtau1);
+  double logtau2 = param(4*M + 2);
+  double tau2sq = exp(2 * logtau2);
   
   arma::vec mainpart11 = X1 * theta1;
   arma::vec mainpart12 = X2 * phi1;
@@ -163,34 +165,34 @@ arma::vec grad_MALA(arma::vec R,
                                         grad_lik_part12,
                                         grad_lik_part22);
     
-  arma::vec grad_prior = join_cols((S1 * theta1) / tau1sq,
-                             (S1 * theta2) / tau2sq,
-                             (S2 * phi1) / tau1sq,
-                             (S2 * phi2) / tau2sq);
+  arma::vec grad_prior = join_cols((S1 * theta1) / (tau1sq * delta_sq),
+                             (S1 * theta2) / (tau2sq * delta_sq),
+                             (S2 * phi1) / (tau1sq * delta_sq),
+                             (S2 * phi2) / (tau2sq * delta_sq));
     
- //penalty_term = mean(mainpart1^2 * mainpart2^2)
-
-// # grad_prior_penalty = (2/n)*
-// #   c(kronecker(diag(M), t(phi1)) %*% t(X) %*% 
-// #       (mainpart1 * Nfn),
-// #     kronecker(diag(M), t(phi2)) %*% t(X) %*% 
-// #       (mainpart2 * Pfn),
-// #     kronecker(t(lambda1), diag(M)) %*% t(X) %*% 
-// #       (mainpart1 * Nfn),
-// #     kronecker(t(lambda2), diag(M)) %*% t(X) %*% 
-// #       (mainpart2 * Pfn))
+    //penalty_term = mean(mainpart1^2 * mainpart2^2)
     
-// # penalty_term = mean((Pfn + Nfn)^2)
-// # 
-// # grad_prior_penalty = (4/n)*
-// #   c(t(X1) %*% ((Pfn + Nfn) * Pfn2 * mainpart11),
-// #     t(X1) %*% ((Pfn + Nfn) * Nfn2 * mainpart21),
-// #     t(X2) %*% ((Pfn + Nfn) * Pfn1 * mainpart12),
-// #     t(X2) %*% ((Pfn + Nfn) * Nfn1 * mainpart22))
-//     
-// # penalty_term = mean((mainpart1^2) + (mainpart2^2) + (mainpart1^2 * mainpart2^2))
-// # grad_prior_penalty = (2/n)*c(t(X) %*% (mainpart1 * (1 + Nfn)),
-// #                                      t(X) %*% (mainpart2 * (Pfn + 1)))
+    // # grad_prior_penalty = (2/n)*
+    // #   c(kronecker(diag(M), t(phi1)) %*% t(X) %*% 
+    // #       (mainpart1 * Nfn),
+    // #     kronecker(diag(M), t(phi2)) %*% t(X) %*% 
+    // #       (mainpart2 * Pfn),
+    // #     kronecker(t(lambda1), diag(M)) %*% t(X) %*% 
+    // #       (mainpart1 * Nfn),
+    // #     kronecker(t(lambda2), diag(M)) %*% t(X) %*% 
+    // #       (mainpart2 * Pfn))
+    
+    // # penalty_term = mean((Pfn + Nfn)^2)
+    // # 
+    // # grad_prior_penalty = (4/n)*
+    // #   c(t(X1) %*% ((Pfn + Nfn) * Pfn2 * mainpart11),
+    // #     t(X1) %*% ((Pfn + Nfn) * Nfn2 * mainpart21),
+    // #     t(X2) %*% ((Pfn + Nfn) * Pfn1 * mainpart12),
+    // #     t(X2) %*% ((Pfn + Nfn) * Nfn1 * mainpart22))
+    //     
+    // # penalty_term = mean((mainpart1^2) + (mainpart2^2) + (mainpart1^2 * mainpart2^2))
+    // # grad_prior_penalty = (2/n)*c(t(X) %*% (mainpart1 * (1 + Nfn)),
+    // #                                      t(X) %*% (mainpart2 * (Pfn + 1)))
     
   double penalty_term = mean(Pfn) * mean(Nfn);
       
@@ -205,22 +207,50 @@ arma::vec grad_MALA(arma::vec R,
   arma::vec grad_prior_penalty = 2 * join_cols((int_P2 * int_N1 * int_N2) * (mat1 * theta1),
                                      (int_P1 * int_P2 * int_N2) * (mat1 * theta2),
                                      (int_P1 * int_N1 * int_N2) * (mat2 * phi1),
-                                     (int_P1 * int_P2 * int_N1) * (mat1 * phi2));
+                                     (int_P1 * int_P2 * int_N1) * (mat2 * phi2));
       
 // # penalty_term = (mean(Pfn * Nfn))^2
 // # grad_prior_penalty = (2/n^2)*c(2*sum(Pfn*Nfn)*t(X) %*% (mainpart1 * Nfn),
 // #                                sum(Pfn*Nfn)*t(X) %*% Pfn)
       
+  // arma::vec grad_total = grad_lik + grad_prior + 
+  //              (0.5*grad_prior_penalty / (pen_param + penalty_term));
+  
   arma::vec grad_total = grad_lik + grad_prior + 
-               (0.5*grad_prior_penalty / (pen_param + penalty_term));
+    ((0.5 / (pen_param + penalty_term)) * grad_prior_penalty);
         
 // Construct gradient wrt pen_param
 
   double grad_pen = pen_param + ((0.5/(1.0 + (penalty_term / pen_param)))) - 1;
+  
+  // double grad_pen = (2 * pow(pen_param, 2.0) * penalty_term) - 
+  //   ((1 - pow(pen_param, 2.0)) / (1 + pow(pen_param, 2.0)));
+  
   arma::vec grad_pen_vec(1, fill::zeros);
   grad_pen_vec(0) = grad_pen;
+  
+  ///// Construct grad_tau1 and grad_tau2
+  
+  arma::mat c_11mat = (theta1.t() * (S1 * theta1));
+  double c_11 = c_11mat(0,0);
+  arma::mat c_21mat = (theta2.t() * (S1 * theta2));
+  double c_21 = c_21mat(0,0);
+  arma::mat c_12mat = (phi1.t() * (S2 * phi1));
+  double c_12 = c_12mat(0,0);
+  arma::mat c_22mat = (phi2.t() * (S2 * phi2));
+  double c_22 = c_22mat(0,0);
+  
+  double grad_tau1 = (2 * M) - ((c_11 + c_12) / (tau1sq * delta_sq)) - ((1 - tau1sq) / (1 + tau1sq));
+  
+  arma::vec grad_tau1_vec(1, fill::zeros);
+  grad_tau1_vec(0) = grad_tau1;
+  
+  double grad_tau2 = (2 * M) - ((c_21 + c_22) / (tau2sq * delta_sq)) - ((1 - tau2sq) / (1 + tau2sq));
+  
+  arma::vec grad_tau2_vec(1, fill::zeros);
+  grad_tau2_vec(0) = grad_tau2;
           
-  return join_cols(grad_total, grad_pen_vec);
+  return join_cols(grad_total, grad_pen_vec, grad_tau1_vec, grad_tau2_vec);
   
 }
 
@@ -228,21 +258,22 @@ arma::vec grad_MALA(arma::vec R,
 Rcpp::List sq_sampler(arma::vec R, 
                       arma::mat X1, 
                       arma::mat X2, 
-                      double tau1sq, 
-                      double tau2sq, 
                       arma::mat S1, 
                       arma::mat S2, 
                       double sigma_sq,
+                      double delta_sq,
                       arma::vec old_param, 
                       double eps_MALA,
-                      double c_HMC, 
+                      arma::mat precond_mat,
+                      arma::mat precond_mat_inv,
                       int L_HMC){
   
   int M = old_param.n_elem;
   
   arma::vec new_param = old_param;
   arma::mat sig1;
-  sig1.eye(M,M);
+  // sig1 = eye(M,M) * pow(c_HMC, 2.0);
+  sig1 = precond_mat;
   arma::vec new_rho = mvnrnd(vec(M, fill::zeros), sig1, 1);
   
   arma::vec current_param = new_param;
@@ -250,23 +281,25 @@ Rcpp::List sq_sampler(arma::vec R,
   
   //Half step of momentum
   
-  new_rho = new_rho - (0.5*eps_MALA*grad_MALA(R, X1, X2,
-                                              new_param, tau1sq, tau2sq,
-                                              S1, S2, sigma_sq));
+  new_rho = new_rho - (0.5 * eps_MALA * grad_MALA(R, X1, X2,
+                                                  new_param, 
+                                                  S1, S2, sigma_sq, delta_sq));
   
   for(int l_ind=0; l_ind < L_HMC; ++l_ind){
     
     //Full position step
     
-    new_param = new_param + ((eps_MALA * pow(c_HMC, 2.0)) * new_rho);
+    // new_param = new_param + ((eps_MALA / pow(c_HMC, 2.0)) * new_rho);
+    
+    new_param = new_param + (eps_MALA * (precond_mat_inv * new_rho));
     
     if(l_ind != L_HMC - 1){
       
       //Full Momentum Step
       
-      new_rho = new_rho - (eps_MALA*grad_MALA(R, X1, X2,
-                                              new_param, tau1sq, tau2sq,
-                                              S1, S2, sigma_sq));
+      new_rho = new_rho - (eps_MALA * grad_MALA(R, X1, X2,
+                                                new_param,
+                                                S1, S2, sigma_sq, delta_sq));
       
     }
     
@@ -274,19 +307,25 @@ Rcpp::List sq_sampler(arma::vec R,
   
   //Half momentum step
   
-  new_rho = new_rho - (0.5*eps_MALA*grad_MALA(R, X1, X2,
-                                              new_param, tau1sq, tau2sq,
-                                              S1, S2, sigma_sq));
+  new_rho = new_rho - (0.5 * eps_MALA * grad_MALA(R, X1, X2,
+                                                  new_param, 
+                                                  S1, S2, sigma_sq, delta_sq));
   
   new_rho = -new_rho; //To maintain reversibility
   
-  double current_U = pot_MALA(R, X1, X2, current_param, tau1sq, tau2sq, 
-                              S1, S2, sigma_sq);
-  double current_K = accu(square(current_rho))/(2*pow(c_HMC, 2.0));
+  double current_U = pot_MALA(R, X1, X2, current_param,  
+                              S1, S2, sigma_sq, delta_sq);
   
-  double new_U = pot_MALA(R, X1, X2, new_param, tau1sq, tau2sq, 
-                          S1, S2, sigma_sq);
-  double new_K = accu(square(new_rho))/(2*pow(c_HMC, 2.0));
+  arma::mat current_K_mat = 0.5 * (current_rho.t() * (precond_mat_inv * current_rho));
+  // double current_K = accu(square(current_rho))/(2 * pow(c_HMC, 2.0));
+  double current_K = current_K_mat(0,0);
+  
+  double new_U = pot_MALA(R, X1, X2, new_param,  
+                          S1, S2, sigma_sq, delta_sq);
+  
+  arma::mat new_K_mat = 0.5 * (new_rho.t() * (precond_mat_inv * new_rho));
+  // double new_K = accu(square(new_rho))/(2 * pow(c_HMC, 2.0));
+  double new_K = new_K_mat(0,0);
   
   double U1 = randu();
   double energy_diff1 = exp(current_U - new_U + current_K - new_K);
@@ -349,7 +388,9 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                                                double accept_high,
                                                double accept_scale,
                                                double a_lamb,
-                                               double b_lamb){
+                                               double b_lamb,
+                                               Rcpp::List init_values,
+                                               int precond){
   //Define storage matrices
   
   arma::vec alpha_stor(MC, fill::zeros);
@@ -379,9 +420,43 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
   
   arma::mat all_interactions(n, K, fill::zeros);
   
+  // Define preconditioning matrix storage
+  
+  arma::cube precond_mat_stor(4*IE_nspl + 3, 4*IE_nspl + 3, K, fill::zeros);
+  arma::cube precond_mat_inv_stor(4*IE_nspl + 3, 4*IE_nspl + 3, K, fill::zeros);
+  arma::cube grad_sample_stor(MC, 4*IE_nspl + 3, K, fill::zeros);
+  
   if(p_cov > 0){
     
     arma::mat cov_effect_stor(MC, p_cov, fill::zeros);
+    
+    //// Initialize ////
+    
+    // Intercept and sigma^2
+    
+    alpha_stor(0) = init_values["intercept_est"];
+    sigmasq_stor(0) = init_values["sigmasq_est"];
+    
+    // Covariate effects (remove if p_cov = 0)
+    
+    arma::vec cov_effect_init_vec = init_values["cov_effect_est"];
+    
+    cov_effect_stor.row(0) = cov_effect_init_vec.t();
+    
+    // Main effects
+    
+    arma::vec ME_coeff_init_vec = init_values["ME_coeff_est"];
+    
+    ME_coeff_stor.row(0) = ME_coeff_init_vec.t();
+    
+    // Interaction effects
+    
+    arma::mat pos1_init_mat = init_values["IE_pos_part1_coeff_est"];
+    arma::mat pos2_init_mat = init_values["IE_pos_part2_coeff_est"];
+    arma::mat neg1_init_mat = init_values["IE_neg_part1_coeff_est"];
+    arma::mat neg2_init_mat = init_values["IE_neg_part2_coeff_est"];
+    
+    IE_scale_deltasq(0) = 0.01;
     
     for(int k=0; k<K; ++k){
       
@@ -390,52 +465,71 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       int u = map_k_to_uv(k,1);
       int v = map_k_to_uv(k,2);
       
-      // Initialize rank 1 components
+      (IE_pos_theta1.slice(k)).row(0) = pos1_init_mat.col(k).t();
+      (IE_neg_theta2.slice(k)).row(0) = neg1_init_mat.col(k).t();
+      (IE_pos_phi1.slice(k)).row(0) = pos2_init_mat.col(k).t();
+      (IE_neg_phi2.slice(k)).row(0) = neg2_init_mat.col(k).t();
       
-      if(zero_ind(k) == 1){
-        
-        (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        
-        arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
-        arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
-        arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
-        arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
-        
-        arma::vec pos_part = pos_part1 % pos_part2;
-        arma::vec neg_part = neg_part1 % neg_part2;
-        
-        all_interactions.col(k) = pos_part - neg_part;
-        
-      }
+      arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+      arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+      arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+      arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+
+      arma::vec pos_part = pos_part1 % pos_part2;
+      arma::vec neg_part = neg_part1 % neg_part2;
+      
+      all_interactions.col(k) = pos_part - neg_part;
+      
+      //Initialize penalty parameter
+      
+      IE_pen(0,k) = 1;
       
     }
+    
+    // for(int k=0; k<K; ++k){
+    // 
+    //   // Obtain inverse index (u,v)
+    // 
+    //   int u = map_k_to_uv(k,1);
+    //   int v = map_k_to_uv(k,2);
+    // 
+    //   // Initialize rank 1 components
+    // 
+    //   if(zero_ind(k) == 1){
+    // 
+    //     (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    // 
+    //     arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+    //     arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+    //     arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+    //     arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+    // 
+    //     arma::vec pos_part = pos_part1 % pos_part2;
+    //     arma::vec neg_part = neg_part1 % neg_part2;
+    // 
+    //     all_interactions.col(k) = pos_part - neg_part;
+    // 
+    //   }
+    // 
+    // }
     
     arma::mat accept_MALA(MC, K, fill::zeros);
     accept_MALA.row(0) = vec(K, fill::ones).t();
     
-    //Begin MCMC sampling. 
+    //Begin MCMC sampling. Remove p_cov part if p_cov = 0.
     
     arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
-    whole_prec(0,0) = 0.001;
-    whole_prec.submat(1, 1, p_cov, p_cov) = 0.001 * eye(p_cov, p_cov);
+    whole_prec(0,0) = 0.01;
+    whole_prec.submat(1, 1, p_cov, p_cov) = 0.01 * eye(p_cov, p_cov);
     
     for(int m=1; m<MC; ++m){
-      
-      // //Sample (\alpha, \sigma^2) | - 
-      // 
-      // arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
-      //                       (sum(all_interactions, 1)) +
-      //                       (Z * cov_effect_stor.row(m-1).t()));
-      // 
-      // sigmasq_stor(m) = sigmasq_sampler(R_int_sigsq, n);
-      // alpha_stor(m) = intercept_sampler(R_int_sigsq, n, sigmasq_stor(m));
       
       ////Main Effects and Related Parameters (intercept, sigma^2)
       
@@ -458,26 +552,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       cov_effect_stor.row(m) = sampler_ME(span(1, p_cov)).t();
       ME_coeff_stor.row(m) = sampler_ME(span(p_cov+1,p_cov+(p*ME_nspl))).t();
       
-      //Sample \lambda_j = scale of \beta_j ####
-      
-      arma::vec qf_stor(p, fill::ones);
-      
-      for(int j=0; j<p; ++j){
-        
-        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
-        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
-        qf_stor(j) = qf_j(0,0);
-        
-        ME_scale_stor(m,j) = random_gamma(a_lamb + 
-          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
-        
-        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
-        
-      }
-      
       //Interaction Effects and Related Parameters. #####
-      
-      arma::mat qf_stor_int(K, 2, fill::ones);
       
       for(int k=0; k<K; ++k){
         
@@ -501,39 +576,125 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           // Define old_param for sampling
           
-          arma::vec old_param((4*IE_nspl + 1), fill::zeros);
+          arma::vec old_param((4*IE_nspl + 3), fill::zeros);
           
           old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
           old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
           old_param(span(2*IE_nspl, (3*IE_nspl)-1)) = IE_pos_phi1.slice(k).row(m-1).t();
           old_param(span(3*IE_nspl, (4*IE_nspl)-1)) = IE_neg_phi2.slice(k).row(m-1).t();
+          
           old_param(4*IE_nspl) = log(IE_pen(m-1,k));
+          old_param(4*IE_nspl + 1) = log(IE_scale_tausq1(m-1,k)) / 2.0;
+          old_param(4*IE_nspl + 2) = log(IE_scale_tausq2(m-1,k)) / 2.0;
           
           // Do the sampling
           
-          Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
-                                            IE_list.slice(u), 
-                                            IE_list.slice(v), 
-                                            IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
-                                            IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
-                                            SigmaInt_inv,
-                                            SigmaInt_inv,
-                                            sigmasq_stor(m-1),
-                                            old_param,
-                                            eps_MALA(k),
-                                            c_HMC,
-                                            L_HMC);
+          arma::mat precond_k_init = pow(c_HMC, 2.0) * eye(4*IE_nspl + 3, 4*IE_nspl + 3);
+          arma::mat precond_k_inv_init = eye(4*IE_nspl + 3, 4*IE_nspl + 3) / pow(c_HMC, 2.0);
           
-          accept_MALA(m,k) = sq_MALA_k["accept"];
-          arma::vec whole_coeff = sq_MALA_k["sampled_param"];
-          int len_psi = (whole_coeff.n_elem - 1)/4;
-          arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
+          int len_psi = IE_nspl;
+          arma::vec whole_coeff(4*len_psi + 3, fill::zeros);
+          arma::vec whole_coeff_psi(4*len_psi, fill::zeros);
+          
+          if(m < 5000){
+            
+            Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                              IE_list.slice(u), 
+                                              IE_list.slice(v), 
+                                              SigmaInt_inv,
+                                              SigmaInt_inv,
+                                              sigmasq_stor(m-1),
+                                              IE_scale_deltasq(m-1),
+                                              old_param,
+                                              eps_MALA(k),
+                                              precond_k_init,
+                                              precond_k_inv_init,
+                                              L_HMC);
+            
+            accept_MALA(m,k) = sq_MALA_k["accept"];
+            arma::vec sampled_param_k = sq_MALA_k["sampled_param"];
+            whole_coeff = sampled_param_k;
+            whole_coeff_psi = sampled_param_k(span(0, 4*len_psi - 1));
+            
+            // Store the sampled gradient 
+            
+            arma::vec sampled_grad_k = grad_MALA(R_IE_k,
+                                                 IE_list.slice(u),
+                                                 IE_list.slice(v),
+                                                 whole_coeff,
+                                                 SigmaInt_inv,
+                                                 SigmaInt_inv,
+                                                 sigmasq_stor(m-1),
+                                                 IE_scale_deltasq(m-1));
+            
+            grad_sample_stor.slice(k).row(m) = sampled_grad_k.t();
+            
+          }else{
+            
+            if(m % 500 == 0){
+              
+              if(precond == 1){
+                
+                arma::mat precond_woburnin = grad_sample_stor.slice(k).rows(1000, m-1);
+                
+                arma::vec precond_mat_mean = mean(precond_woburnin, 0).t();
+                
+                precond_mat_stor.slice(k) = ((precond_woburnin.t() * precond_woburnin) / m) -
+                  (precond_mat_mean * precond_mat_mean.t());
+                
+                precond_mat_inv_stor.slice(k) = inv_sympd(precond_mat_stor.slice(k) +
+                  (0.01 * eye(4*IE_nspl + 3, 4*IE_nspl + 3)));
+                
+              }else{
+                
+                precond_mat_stor.slice(k) = precond_k_init;
+                precond_mat_inv_stor.slice(k) = precond_k_inv_init;
+                
+              }
+              
+            }
+            
+            Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                              IE_list.slice(u), 
+                                              IE_list.slice(v), 
+                                              SigmaInt_inv,
+                                              SigmaInt_inv,
+                                              sigmasq_stor(m-1),
+                                              IE_scale_deltasq(m-1),
+                                              old_param,
+                                              eps_MALA(k),
+                                              precond_mat_stor,
+                                              precond_mat_inv_stor,
+                                              L_HMC);
+            
+            accept_MALA(m,k) = sq_MALA_k["accept"];
+            arma::vec sampled_param_k = sq_MALA_k["sampled_param"];
+            whole_coeff = sampled_param_k;
+            whole_coeff_psi = sampled_param_k(span(0, 4*len_psi - 1));
+            
+            // Store the sampled gradient 
+            
+            arma::vec sampled_grad_k = grad_MALA(R_IE_k,
+                                                 IE_list.slice(u),
+                                                 IE_list.slice(v),
+                                                 whole_coeff,
+                                                 SigmaInt_inv,
+                                                 SigmaInt_inv,
+                                                 sigmasq_stor(m-1),
+                                                 IE_scale_deltasq(m-1));
+            
+            grad_sample_stor.slice(k).row(m) = sampled_grad_k.t();
+            
+          }
           
           IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
           IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
           IE_pos_phi1.slice(k).row(m) = whole_coeff_psi(span(2*len_psi, 3*len_psi-1)).t();
           IE_neg_phi2.slice(k).row(m) = whole_coeff_psi(span(3*len_psi, 4*len_psi-1)).t();
+          
           IE_pen(m,k) = exp(whole_coeff(4*len_psi));
+          IE_scale_tausq1(m,k) = exp(2.0 * whole_coeff(4*len_psi + 1));
+          IE_scale_tausq2(m,k) = exp(2.0 * whole_coeff(4*len_psi + 2));
           
           // Update the interaction matrix
           
@@ -547,7 +708,34 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           all_interactions.col(k) = Ppart - Npart; 
           
-          // Update other parameters
+        }
+        
+      }
+      
+      //Sample \lambda_j = scale of \beta_j in ME ####
+      
+      arma::vec qf_stor(p, fill::ones);
+      
+      for(int j=0; j<p; ++j){
+        
+        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
+        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
+        qf_stor(j) = qf_j(0,0);
+        
+        ME_scale_stor(m,j) = random_gamma(a_lamb + 
+          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
+        
+        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
+        
+      }
+      
+      //// Sample Interaction Effect variance parameters ////
+      
+      arma::mat qf_stor_int(K, 2, fill::ones);
+      
+      for(int k=0; k<K; ++k){
+        
+        if(zero_ind(k) == 1){
           
           arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
             IE_pos_theta1.slice(k).row(m).t()));
@@ -569,21 +757,21 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           double c_2k = c_2k1 + c_2k2;
           
-          // Sample \tau_1^2 | a and a | \tau_1^2
-          
-          double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
-            (c_1k/IE_scale_deltasq(m-1));
-          
-          IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
-          IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
-          
-          // Sample \tau_2^2 | b and b | \tau_2^2
-          
-          double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
-            (c_2k/IE_scale_deltasq(m-1));
-          
-          IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
-          IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
+          // // Sample \tau_1^2 | a and a | \tau_1^2
+          // 
+          // double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
+          //   (c_1k/IE_scale_deltasq(m-1));
+          // 
+          // IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
+          // IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
+          // 
+          // // Sample \tau_2^2 | b and b | \tau_2^2
+          // 
+          // double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
+          //   (c_2k/IE_scale_deltasq(m-1));
+          // 
+          // IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
+          // IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
           
           //Store qf/tau^2
           
@@ -592,34 +780,32 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
         }
         
-        // Sample \delta^2 | \nu and \nu | \delta^2
-        
-        double deltasq_shape = (2*IE_nspl*K) + 0.5;
-        double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
-        
-        IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
-        IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
-        
-        // IE_scale_deltasq(m) = 1.0;
-        
-        // Sample error variance
-        
-        arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
-        sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
-        
-      }
+      }  
       
-      if((m >= 199) && (m < cutoff)){
+      // Sample \delta^2 | \nu and \nu | \delta^2
+      
+      double deltasq_shape = (2*IE_nspl*K) + 0.5;
+      double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+      
+      IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
+      IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
+      
+      // Sample error variance
+      
+      arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
+      sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
+      
+      if((m >= 499) && (m < cutoff)){
         
         if(m % 100 == 0){
           
           for(int k1=0; k1<K; ++k1){
             
-            if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
+            if(mean(accept_MALA.rows(m-499,m).col(k1)) <= accept_low){
               
               eps_MALA(k1) = eps_MALA(k1)*accept_scale;
               
-            }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
+            }else if(mean(accept_MALA.rows(m-499,m).col(k1)) >= accept_high){
               
               eps_MALA(k1) = eps_MALA(k1)/accept_scale;
               
@@ -641,38 +827,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         
       }
       
-      // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
-      // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
-      // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
-      
     }  
-    
-    // #### Special case p = 2 ####
-    //                         
-    //                         if(m %% 200 == 0)
-    //                         {
-    //                           
-    //                           if(max(mean(accept_MALA[(m-199):m])) <= 0.5)
-    //                           {
-    //                             
-    //                             eps_MALA = 0.9*eps_MALA
-    //                             
-    //                           }
-    //                           else if(min(mean(accept_MALA[(m-199):m])) >= 0.9)
-    //                           {
-    //                             
-    //                             eps_MALA = eps_MALA/0.9
-    //                             
-    //                           }else
-    //                           {
-    //                             
-    //                             eps_MALA = eps_MALA
-    //                             
-    //                           }
-    //                           
-    //                         }
-    //                         
-    //         }
     
     return Rcpp::List::create(Rcpp::Named("intercept") = alpha_stor,
                               Rcpp::Named("error_var") = sigmasq_stor,
@@ -688,8 +843,31 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                               Rcpp::Named("Accept_Prop") = accept_MALA,
                               Rcpp::Named("HMC_epsilon") = eps_MALA,
                               Rcpp::Named("IE_penalty") = IE_pen,
-                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
+                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq,
+                              Rcpp::Named("precond_mat_stor") = precond_mat_stor);
   }else{
+    
+    //// Initialize ////
+    
+    // Intercept and sigma^2
+    
+    alpha_stor(0) = init_values["intercept_est"];
+    sigmasq_stor(0) = init_values["sigmasq_est"];
+    
+    // Main effects
+    
+    arma::vec ME_coeff_init_vec = init_values["ME_coeff_est"];
+    
+    ME_coeff_stor.row(0) = ME_coeff_init_vec.t();
+    
+    // Interaction effects
+    
+    arma::mat pos1_init_mat = init_values["IE_pos_part1_coeff_est"];
+    arma::mat pos2_init_mat = init_values["IE_pos_part2_coeff_est"];
+    arma::mat neg1_init_mat = init_values["IE_neg_part1_coeff_est"];
+    arma::mat neg2_init_mat = init_values["IE_neg_part2_coeff_est"];
+    
+    IE_scale_deltasq(0) = 0.01;
     
     for(int k=0; k<K; ++k){
       
@@ -698,51 +876,70 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       int u = map_k_to_uv(k,1);
       int v = map_k_to_uv(k,2);
       
-      // Initialize rank 1 components
+      (IE_pos_theta1.slice(k)).row(0) = pos1_init_mat.col(k).t();
+      (IE_neg_theta2.slice(k)).row(0) = neg1_init_mat.col(k).t();
+      (IE_pos_phi1.slice(k)).row(0) = pos2_init_mat.col(k).t();
+      (IE_neg_phi2.slice(k)).row(0) = neg2_init_mat.col(k).t();
       
-      if(zero_ind(k) == 1){
-        
-        (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
-         0.1*SigmaInt).t();
-        
-        arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
-        arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
-        arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
-        arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
-        
-        arma::vec pos_part = pos_part1 % pos_part2;
-        arma::vec neg_part = neg_part1 % neg_part2;
-        
-        all_interactions.col(k) = pos_part - neg_part;
-        
-      }
+      arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+      arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+      arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+      arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+      
+      arma::vec pos_part = pos_part1 % pos_part2;
+      arma::vec neg_part = neg_part1 % neg_part2;
+      
+      all_interactions.col(k) = pos_part - neg_part;
+      
+      //Initialize penalty parameter
+      
+      IE_pen(0,k) = 1;
       
     }
+    
+    // for(int k=0; k<K; ++k){
+    // 
+    //   // Obtain inverse index (u,v)
+    // 
+    //   int u = map_k_to_uv(k,1);
+    //   int v = map_k_to_uv(k,2);
+    // 
+    //   // Initialize rank 1 components
+    // 
+    //   if(zero_ind(k) == 1){
+    // 
+    //     (IE_pos_theta1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_neg_theta2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_pos_phi1.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    //     (IE_neg_phi2.slice(k)).row(0) = mvnrnd(arma::vec(IE_nspl, fill::zeros),
+    //      0.1*SigmaInt).t();
+    // 
+    //     arma::vec pos_part1 = square(IE_list.slice(u) * IE_pos_theta1.slice(k).row(0).t());
+    //     arma::vec pos_part2 = square(IE_list.slice(v) * IE_pos_phi1.slice(k).row(0).t());
+    //     arma::vec neg_part1 = square(IE_list.slice(u) * IE_neg_theta2.slice(k).row(0).t());
+    //     arma::vec neg_part2 = square(IE_list.slice(v) * IE_neg_phi2.slice(k).row(0).t());
+    // 
+    //     arma::vec pos_part = pos_part1 % pos_part2;
+    //     arma::vec neg_part = neg_part1 % neg_part2;
+    // 
+    //     all_interactions.col(k) = pos_part - neg_part;
+    // 
+    //   }
+    // 
+    // }
     
     arma::mat accept_MALA(MC, K, fill::zeros);
     accept_MALA.row(0) = vec(K, fill::ones).t();
     
-    //Begin MCMC sampling. 
+    //Begin MCMC sampling. Remove p_cov part if p_cov = 0.
     
     arma::mat whole_prec(1+p_cov+(p*ME_nspl), 1+p_cov+(p*ME_nspl), fill::zeros);
-    whole_prec(0,0) = 0.001;
+    whole_prec(0,0) = 0.01;
     
     for(int m=1; m<MC; ++m){
-      
-      // //Sample (\alpha, \sigma^2) | - 
-      // 
-      // arma::vec R_int_sigsq = y - ((ME_mat * ME_coeff_stor.row(m-1).t()) +
-      //                       (sum(all_interactions, 1)) +
-      //                       (Z * cov_effect_stor.row(m-1).t()));
-      // 
-      // sigmasq_stor(m) = sigmasq_sampler(R_int_sigsq, n);
-      // alpha_stor(m) = intercept_sampler(R_int_sigsq, n, sigmasq_stor(m));
       
       ////Main Effects and Related Parameters (intercept, sigma^2)
       
@@ -764,26 +961,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
       alpha_stor(m) = sampler_ME(0);
       ME_coeff_stor.row(m) = sampler_ME(span(p_cov+1,p_cov+(p*ME_nspl))).t();
       
-      //Sample \lambda_j = scale of \beta_j ####
-      
-      arma::vec qf_stor(p, fill::ones);
-      
-      for(int j=0; j<p; ++j){
-        
-        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
-        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
-        qf_stor(j) = qf_j(0,0);
-        
-        ME_scale_stor(m,j) = random_gamma(a_lamb + 
-          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
-        
-        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
-        
-      }
-      
       //Interaction Effects and Related Parameters. #####
-      
-      arma::mat qf_stor_int(K, 2, fill::ones);
       
       for(int k=0; k<K; ++k){
         
@@ -802,44 +980,129 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           // Sample interaction k
           
-          arma::vec R_IE_k = y - ((ME_mat * sampler_ME) +
-            (all_interaction_sum_notk));
+          arma::vec R_IE_k = y - ((ME_mat * sampler_ME) + (all_interaction_sum_notk));
           
           // Define old_param for sampling
           
-          arma::vec old_param((4*IE_nspl + 1), fill::zeros);
+          arma::vec old_param((4*IE_nspl + 3), fill::zeros);
           
           old_param(span(0, IE_nspl - 1)) = IE_pos_theta1.slice(k).row(m-1).t();
           old_param(span(IE_nspl, (2*IE_nspl) - 1)) = IE_neg_theta2.slice(k).row(m-1).t();
           old_param(span(2*IE_nspl, (3*IE_nspl)-1)) = IE_pos_phi1.slice(k).row(m-1).t();
           old_param(span(3*IE_nspl, (4*IE_nspl)-1)) = IE_neg_phi2.slice(k).row(m-1).t();
+          
           old_param(4*IE_nspl) = log(IE_pen(m-1,k));
+          old_param(4*IE_nspl + 1) = log(IE_scale_tausq1(m-1,k)) / 2.0;
+          old_param(4*IE_nspl + 2) = log(IE_scale_tausq2(m-1,k)) / 2.0;
           
           // Do the sampling
           
-          Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
-                                            IE_list.slice(u), 
-                                            IE_list.slice(v), 
-                                            IE_scale_deltasq(m-1)*IE_scale_tausq1(m-1,k),
-                                            IE_scale_deltasq(m-1)*IE_scale_tausq2(m-1,k),
-                                            SigmaInt_inv,
-                                            SigmaInt_inv,
-                                            sigmasq_stor(m-1),
-                                            old_param,
-                                            eps_MALA(k),
-                                            c_HMC,
-                                            L_HMC);
+          arma::mat precond_k_init = pow(c_HMC, 2.0) * eye(4*IE_nspl + 3, 4*IE_nspl + 3);
+          arma::mat precond_k_inv_init = eye(4*IE_nspl + 3, 4*IE_nspl + 3) / pow(c_HMC, 2.0);
           
-          accept_MALA(m,k) = sq_MALA_k["accept"];
-          arma::vec whole_coeff = sq_MALA_k["sampled_param"];
-          int len_psi = (whole_coeff.n_elem - 1)/4;
-          arma::vec whole_coeff_psi = whole_coeff(span(0, 4*len_psi - 1));
+          int len_psi = IE_nspl;
+          arma::vec whole_coeff(4*len_psi + 3, fill::zeros);
+          arma::vec whole_coeff_psi(4*len_psi, fill::zeros);
+          
+          if(m < 5000){
+            
+            Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                              IE_list.slice(u), 
+                                              IE_list.slice(v), 
+                                              SigmaInt_inv,
+                                              SigmaInt_inv,
+                                              sigmasq_stor(m-1),
+                                              IE_scale_deltasq(m-1),
+                                              old_param,
+                                              eps_MALA(k),
+                                              precond_k_init,
+                                              precond_k_inv_init,
+                                              L_HMC);
+            
+            accept_MALA(m,k) = sq_MALA_k["accept"];
+            arma::vec sampled_param_k = sq_MALA_k["sampled_param"];
+            whole_coeff = sampled_param_k;
+            whole_coeff_psi = sampled_param_k(span(0, 4*len_psi - 1));
+            
+            // Store the sampled gradient 
+            
+            arma::vec sampled_grad_k = grad_MALA(R_IE_k,
+                                                 IE_list.slice(u),
+                                                 IE_list.slice(v),
+                                                 whole_coeff,
+                                                 SigmaInt_inv,
+                                                 SigmaInt_inv,
+                                                 sigmasq_stor(m-1),
+                                                 IE_scale_deltasq(m-1));
+            
+            grad_sample_stor.slice(k).row(m) = sampled_grad_k.t();
+            
+          }else{
+            
+            if(m % 500 == 0){
+              
+              if(precond == 1){
+                
+                arma::mat precond_woburnin = grad_sample_stor.slice(k).rows(1000, m-1);
+                
+                arma::vec precond_mat_mean = mean(precond_woburnin, 0).t();
+                
+                precond_mat_stor.slice(k) = ((precond_woburnin.t() * precond_woburnin) / m) -
+                  (precond_mat_mean * precond_mat_mean.t());
+                
+                precond_mat_inv_stor.slice(k) = inv_sympd(precond_mat_stor.slice(k) +
+                  (0.01 * eye(4*IE_nspl + 3, 4*IE_nspl + 3)));
+                
+              }else{
+                
+                precond_mat_stor.slice(k) = precond_k_init;
+                precond_mat_inv_stor.slice(k) = precond_k_inv_init;
+                
+              }
+              
+            }
+            
+            Rcpp::List sq_MALA_k = sq_sampler(R_IE_k, 
+                                              IE_list.slice(u), 
+                                              IE_list.slice(v), 
+                                              SigmaInt_inv,
+                                              SigmaInt_inv,
+                                              sigmasq_stor(m-1),
+                                              IE_scale_deltasq(m-1),
+                                              old_param,
+                                              eps_MALA(k),
+                                              precond_mat_stor,
+                                              precond_mat_inv_stor,
+                                              L_HMC);
+            
+            accept_MALA(m,k) = sq_MALA_k["accept"];
+            arma::vec sampled_param_k = sq_MALA_k["sampled_param"];
+            whole_coeff = sampled_param_k;
+            whole_coeff_psi = sampled_param_k(span(0, 4*len_psi - 1));
+            
+            // Store the sampled gradient 
+            
+            arma::vec sampled_grad_k = grad_MALA(R_IE_k,
+                                                 IE_list.slice(u),
+                                                 IE_list.slice(v),
+                                                 whole_coeff,
+                                                 SigmaInt_inv,
+                                                 SigmaInt_inv,
+                                                 sigmasq_stor(m-1),
+                                                 IE_scale_deltasq(m-1));
+            
+            grad_sample_stor.slice(k).row(m) = sampled_grad_k.t();
+            
+          }
           
           IE_pos_theta1.slice(k).row(m) = whole_coeff_psi(span(0, len_psi-1)).t();
           IE_neg_theta2.slice(k).row(m) = whole_coeff_psi(span(len_psi, 2*len_psi-1)).t();
           IE_pos_phi1.slice(k).row(m) = whole_coeff_psi(span(2*len_psi, 3*len_psi-1)).t();
           IE_neg_phi2.slice(k).row(m) = whole_coeff_psi(span(3*len_psi, 4*len_psi-1)).t();
+          
           IE_pen(m,k) = exp(whole_coeff(4*len_psi));
+          IE_scale_tausq1(m,k) = exp(2.0 * whole_coeff(4*len_psi + 1));
+          IE_scale_tausq2(m,k) = exp(2.0 * whole_coeff(4*len_psi + 2));
           
           // Update the interaction matrix
           
@@ -853,7 +1116,34 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           all_interactions.col(k) = Ppart - Npart; 
           
-          // Update other parameters
+        }
+        
+      }
+      
+      //Sample \lambda_j = scale of \beta_j in ME ####
+      
+      arma::vec qf_stor(p, fill::ones);
+      
+      for(int j=0; j<p; ++j){
+        
+        arma::vec beta_j = ME_coeff_stor(m, span(j*ME_nspl, ((j+1)*ME_nspl)-1)).t();
+        arma::mat qf_j = beta_j.t() * (SigmaME_inv * beta_j);
+        qf_stor(j) = qf_j(0,0);
+        
+        ME_scale_stor(m,j) = random_gamma(a_lamb + 
+          (0.5*ME_nspl))/(b_lamb + (0.5*qf_stor(j)));
+        
+        // ME_scale_aux(m,j) = random_gamma(1.0) / (1 + ME_scale_stor(m,j));
+        
+      }
+      
+      //// Sample Interaction Effect variance parameters ////
+      
+      arma::mat qf_stor_int(K, 2, fill::ones);
+      
+      for(int k=0; k<K; ++k){
+        
+        if(zero_ind(k) == 1){
           
           arma::mat c_1k1_mat = 0.5*(IE_pos_theta1.slice(k).row(m) * (SigmaInt_inv *
             IE_pos_theta1.slice(k).row(m).t()));
@@ -875,21 +1165,21 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
           double c_2k = c_2k1 + c_2k2;
           
-          // Sample \tau_1^2 | a and a | \tau_1^2
-          
-          double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
-            (c_1k/IE_scale_deltasq(m-1));
-          
-          IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
-          IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
-          
-          // Sample \tau_2^2 | b and b | \tau_2^2
-          
-          double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
-            (c_2k/IE_scale_deltasq(m-1));
-          
-          IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
-          IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
+          // // Sample \tau_1^2 | a and a | \tau_1^2
+          // 
+          // double tausq1_rate = (1.0/IE_scale_a(m-1,k)) + 
+          //   (c_1k/IE_scale_deltasq(m-1));
+          // 
+          // IE_scale_tausq1(m,k) = tausq1_rate / random_gamma(IE_nspl + 0.5);
+          // IE_scale_a(m,k) = (1 + (1/IE_scale_tausq1(m,k))) / random_gamma(1.0);
+          // 
+          // // Sample \tau_2^2 | b and b | \tau_2^2
+          // 
+          // double tausq2_rate = (1.0/IE_scale_b(m-1,k)) + 
+          //   (c_2k/IE_scale_deltasq(m-1));
+          // 
+          // IE_scale_tausq2(m,k) = tausq2_rate / random_gamma(IE_nspl + 0.5);
+          // IE_scale_b(m,k) = (1 + (1/IE_scale_tausq2(m,k))) / random_gamma(1.0);
           
           //Store qf/tau^2
           
@@ -898,34 +1188,32 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
           
         }
         
-        // Sample \delta^2 | \nu and \nu | \delta^2
-        
-        double deltasq_shape = (2*IE_nspl*K) + 0.5;
-        double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
-        
-        IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
-        IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
-        
-        // IE_scale_deltasq(m) = 1.0;
-        
-        // Sample error variance
-        
-        arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
-        sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
-        
-      }
+      }  
       
-      if((m >= 199) && (m < cutoff)){
+      // Sample \delta^2 | \nu and \nu | \delta^2
+      
+      double deltasq_shape = (2*IE_nspl*K) + 0.5;
+      double deltasq_rate = (accu(qf_stor_int)) + (1/IE_scale_nu(m-1));
+      
+      IE_scale_deltasq(m) = deltasq_rate / random_gamma(deltasq_shape);
+      IE_scale_nu(m) = (1 + (1/IE_scale_deltasq(m))) / random_gamma(1.0);
+      
+      // Sample error variance
+      
+      arma::vec R_sigsq = y - ((ME_mat * sampler_ME) + sum(all_interactions,1));
+      sigmasq_stor(m) = sigmasq_sampler(R_sigsq, n);
+      
+      if((m >= 499) && (m < cutoff)){
         
         if(m % 100 == 0){
           
           for(int k1=0; k1<K; ++k1){
             
-            if(mean(accept_MALA.rows(m-199,m).col(k1)) <= accept_low){
+            if(mean(accept_MALA.rows(m-499,m).col(k1)) <= accept_low){
               
               eps_MALA(k1) = eps_MALA(k1)*accept_scale;
               
-            }else if(mean(accept_MALA.rows(m-199,m).col(k1)) >= accept_high){
+            }else if(mean(accept_MALA.rows(m-499,m).col(k1)) >= accept_high){
               
               eps_MALA(k1) = eps_MALA(k1)/accept_scale;
               
@@ -947,38 +1235,7 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
         
       }
       
-      // Rcpp::Rcout << "MCMC Iterate: " << m << std::endl;
-      // Rcpp::Rcout << "Accept Ratio: " << mean(accept_MALA.rows(0,m), 0) << std::endl;
-      // Rcpp::Rcout << "Current step-size: " << eps_MALA.t() << std::endl;
-      
     }  
-    
-    // #### Special case p = 2 ####
-    //                         
-    //                         if(m %% 200 == 0)
-    //                         {
-    //                           
-    //                           if(max(mean(accept_MALA[(m-199):m])) <= 0.5)
-    //                           {
-    //                             
-    //                             eps_MALA = 0.9*eps_MALA
-    //                             
-    //                           }
-    //                           else if(min(mean(accept_MALA[(m-199):m])) >= 0.9)
-    //                           {
-    //                             
-    //                             eps_MALA = eps_MALA/0.9
-    //                             
-    //                           }else
-    //                           {
-    //                             
-    //                             eps_MALA = eps_MALA
-    //                             
-    //                           }
-    //                           
-    //                         }
-    //                         
-    //         }
     
     return Rcpp::List::create(Rcpp::Named("intercept") = alpha_stor,
                               Rcpp::Named("error_var") = sigmasq_stor,
@@ -993,7 +1250,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                               Rcpp::Named("Accept_Prop") = accept_MALA,
                               Rcpp::Named("HMC_epsilon") = eps_MALA,
                               Rcpp::Named("IE_penalty") = IE_pen,
-                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq);
+                              Rcpp::Named("IE_deltasq") = IE_scale_deltasq,
+                              Rcpp::Named("precond_mat_stor") = precond_mat_stor);
     
   }
   

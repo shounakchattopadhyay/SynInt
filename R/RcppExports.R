@@ -9,19 +9,19 @@ maineffects_sampler <- function(R, X, Psi_inv, sigma_sq) {
     .Call(`_SynInt_maineffects_sampler`, R, X, Psi_inv, sigma_sq)
 }
 
-pot_MALA <- function(R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq) {
-    .Call(`_SynInt_pot_MALA`, R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq)
+pot_MALA <- function(R, X1, X2, param, S1, S2, sigma_sq, delta_sq) {
+    .Call(`_SynInt_pot_MALA`, R, X1, X2, param, S1, S2, sigma_sq, delta_sq)
 }
 
-grad_MALA <- function(R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq) {
-    .Call(`_SynInt_grad_MALA`, R, X1, X2, param, tau1sq, tau2sq, S1, S2, sigma_sq)
+grad_MALA <- function(R, X1, X2, param, S1, S2, sigma_sq, delta_sq) {
+    .Call(`_SynInt_grad_MALA`, R, X1, X2, param, S1, S2, sigma_sq, delta_sq)
 }
 
-sq_sampler <- function(R, X1, X2, tau1sq, tau2sq, S1, S2, sigma_sq, old_param, eps_MALA, c_HMC, L_HMC) {
-    .Call(`_SynInt_sq_sampler`, R, X1, X2, tau1sq, tau2sq, S1, S2, sigma_sq, old_param, eps_MALA, c_HMC, L_HMC)
+sq_sampler <- function(R, X1, X2, S1, S2, sigma_sq, delta_sq, old_param, eps_MALA, precond_mat, precond_mat_inv, L_HMC) {
+    .Call(`_SynInt_sq_sampler`, R, X1, X2, S1, S2, sigma_sq, delta_sq, old_param, eps_MALA, precond_mat, precond_mat_inv, L_HMC)
 }
 
-SIDsampler_draws_adaptive_optimized <- function(y, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, cutoff, map_k_to_uv, zero_ind, accept_low, accept_high, accept_scale, a_lamb, b_lamb) {
-    .Call(`_SynInt_SIDsampler_draws_adaptive_optimized`, y, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, cutoff, map_k_to_uv, zero_ind, accept_low, accept_high, accept_scale, a_lamb, b_lamb)
+SIDsampler_draws_adaptive_optimized <- function(y, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, cutoff, map_k_to_uv, zero_ind, accept_low, accept_high, accept_scale, a_lamb, b_lamb, init_values, precond) {
+    .Call(`_SynInt_SIDsampler_draws_adaptive_optimized`, y, ME_mat, IE_list, eps_MALA, c_HMC, L_HMC, MC, n, p, p_cov, SigmaME, SigmaME_inv, SigmaInt, SigmaInt_inv, ME_nspl, IE_nspl, cutoff, map_k_to_uv, zero_ind, accept_low, accept_high, accept_scale, a_lamb, b_lamb, init_values, precond)
 }
 
