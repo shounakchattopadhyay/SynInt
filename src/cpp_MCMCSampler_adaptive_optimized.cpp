@@ -663,8 +663,8 @@ Rcpp::List SIDsampler_draws_adaptive_optimized(arma::vec y,
                                               IE_scale_deltasq(m-1),
                                               old_param,
                                               eps_MALA(k),
-                                              precond_mat_stor,
-                                              precond_mat_inv_stor,
+                                              precond_mat_stor.slice(k),
+                                              precond_mat_inv_stor.slice(k),
                                               L_HMC);
             
             accept_MALA(m,k) = sq_MALA_k["accept"];
