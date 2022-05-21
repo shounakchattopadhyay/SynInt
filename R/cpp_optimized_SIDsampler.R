@@ -611,4 +611,3 @@ SIMsampler<-function(y,
               "init_values" = init_values))
   
 }
-
