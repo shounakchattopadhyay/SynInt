@@ -115,6 +115,21 @@ SIMinit<-function(y, X, Z = NULL, ME_list, IE_list, zero_ind, nugget,
     neg_coeff_part1_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
     neg_coeff_part2_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
     
+    for(k in 1:choose(p,2))
+    {
+     
+      if(zero_ind[k] == 0)
+      {
+       
+        pos_coeff_part1_int[,k] = rep(0, nspl_IE)
+        pos_coeff_part2_int[,k] = rep(0, nspl_IE)
+        neg_coeff_part1_int[,k] = rep(0, nspl_IE)
+        neg_coeff_part2_int[,k] = rep(0, nspl_IE)
+        
+      }
+      
+    }  
+    
     # for(k in 1:choose(p,2))
     # {
     # 
@@ -257,76 +272,91 @@ SIMinit<-function(y, X, Z = NULL, ME_list, IE_list, zero_ind, nugget,
     ## Extract the interaction effect coefficients ##
     
     nspl_IE = dim(IE_list)[2]
-    pos_coeff_part1_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
-    pos_coeff_part2_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
-    neg_coeff_part1_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
-    neg_coeff_part2_int = matrix(0, nrow = nspl_IE, ncol = choose(p,2))
+    pos_coeff_part1_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    pos_coeff_part2_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part1_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
+    neg_coeff_part2_int = matrix(rnorm(nspl_IE * choose(p,2)), nrow = nspl_IE, ncol = choose(p,2))
     
     for(k in 1:choose(p,2))
     {
-      
-      if(zero_ind[k] == 1)
+     
+      if(zero_ind[k] == 0)
       {
-        
-        #Obtain inverse index (u,v)
-        
-        quad_dis = (2*p - 1)^2 - 8*k
-        u = ceiling(0.5*((2*p-1) - quad_dis^0.5))
-        v = p + k - (u*(p - 0.5*(u+1)))
-        
-        # Extract (u,v)-th interaction estimate #
-        
-        S_u = IE_list[,,u]
-        S_v = IE_list[,,v]
-        
-        mat_uv_11 = matrix(0, nrow = n, ncol = p)
-        mat_uv_10 = matrix(0, nrow = n, ncol = p)
-        mat_uv_01 = matrix(0, nrow = n, ncol = p)
-        
-        mat_uv_11[,u] = X[,u]
-        mat_uv_11[,v] = X[,v]
-        
-        mat_uv_10[,u] = X[,u]
-        mat_uv_01[,v] = X[,v]
-        
-        int_est_uv_11 = predict(RFmodel, newdata = mat_uv_11)
-        int_est_uv_10 = predict(RFmodel, newdata = mat_uv_10)
-        int_est_uv_01 = predict(RFmodel, newdata = mat_uv_01)
-        
-        int_est_uv = int_est_uv_11 -
-          int_est_uv_10 -
-          int_est_uv_01 +
-          rep(intercept_est, n)
-        
-        # Extract positive part coefficients #
-        
-        pos_uv = sapply(int_est_uv, max, 0)
-        
-        pos_uv_part1 = pos_uv^(0.25)
-        pos_uv_part2 = pos_uv^(0.25)
-        
-        pos_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
-          t(S_u) %*% pos_uv_part1
-        
-        pos_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
-          t(S_v) %*% pos_uv_part2
-        
-        # Extract negative part coefficients #
-        
-        neg_uv = sapply(-int_est_uv, max, 0)
-        
-        neg_uv_part1 = neg_uv^(0.25)
-        neg_uv_part2 = neg_uv^(0.25)
-        
-        neg_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
-          t(S_u) %*% neg_uv_part1
-        
-        neg_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
-          t(S_v) %*% neg_uv_part2
+       
+        pos_coeff_part1_int[,k] = rep(0, nspl_IE)
+        pos_coeff_part2_int[,k] = rep(0, nspl_IE)
+        neg_coeff_part1_int[,k] = rep(0, nspl_IE)
+        neg_coeff_part2_int[,k] = rep(0, nspl_IE)
         
       }
       
-    }
+    }  
+    
+#     for(k in 1:choose(p,2))
+#     {
+      
+#       if(zero_ind[k] == 1)
+#       {
+        
+#         #Obtain inverse index (u,v)
+        
+#         quad_dis = (2*p - 1)^2 - 8*k
+#         u = ceiling(0.5*((2*p-1) - quad_dis^0.5))
+#         v = p + k - (u*(p - 0.5*(u+1)))
+        
+#         # Extract (u,v)-th interaction estimate #
+        
+#         S_u = IE_list[,,u]
+#         S_v = IE_list[,,v]
+        
+#         mat_uv_11 = matrix(0, nrow = n, ncol = p)
+#         mat_uv_10 = matrix(0, nrow = n, ncol = p)
+#         mat_uv_01 = matrix(0, nrow = n, ncol = p)
+        
+#         mat_uv_11[,u] = X[,u]
+#         mat_uv_11[,v] = X[,v]
+        
+#         mat_uv_10[,u] = X[,u]
+#         mat_uv_01[,v] = X[,v]
+        
+#         int_est_uv_11 = predict(RFmodel, newdata = mat_uv_11)
+#         int_est_uv_10 = predict(RFmodel, newdata = mat_uv_10)
+#         int_est_uv_01 = predict(RFmodel, newdata = mat_uv_01)
+        
+#         int_est_uv = int_est_uv_11 -
+#           int_est_uv_10 -
+#           int_est_uv_01 +
+#           rep(intercept_est, n)
+        
+#         # Extract positive part coefficients #
+        
+#         pos_uv = sapply(int_est_uv, max, 0)
+        
+#         pos_uv_part1 = pos_uv^(0.25)
+#         pos_uv_part2 = pos_uv^(0.25)
+        
+#         pos_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+#           t(S_u) %*% pos_uv_part1
+        
+#         pos_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+#           t(S_v) %*% pos_uv_part2
+        
+#         # Extract negative part coefficients #
+        
+#         neg_uv = sapply(-int_est_uv, max, 0)
+        
+#         neg_uv_part1 = neg_uv^(0.25)
+#         neg_uv_part2 = neg_uv^(0.25)
+        
+#         neg_coeff_part1_int[,k] = solve((t(S_u) %*% S_u) + (nugget * diag(nspl_IE))) %*%
+#           t(S_u) %*% neg_uv_part1
+        
+#         neg_coeff_part2_int[,k] = solve((t(S_v) %*% S_v) + (nugget * diag(nspl_IE))) %*%
+#           t(S_v) %*% neg_uv_part2
+        
+#       }
+      
+#     }
     
     ## Extract the variance estimate ##
     
@@ -539,7 +569,8 @@ SIMsampler<-function(y,
                         ME_list = ME_list, 
                         IE_list = IE_list, 
                         zero_ind = zero_ind, 
-                        nugget = 0.01)
+                        nugget = 0.01,
+                        me_integral_constraint = me_integral_constraint)
   
   print(noquote(paste("########## Sampling initiated with MC = ", MC, " ########## ", sep = "")))
   
