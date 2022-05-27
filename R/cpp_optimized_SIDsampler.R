@@ -605,6 +605,7 @@ SIMsampler<-function(y,
   
   return(list("SIM_model" = SIM_model, 
               "ME_list" = ME_list,
+              "IE_list" = IE_list,
               "ME_knots" = ME_knots_stor,
               "IE_knots" = IE_knots_stor,
               "data" = list("y" = y, "X" = X, "Z" = Z, "n" = n, "p" = p, "MC" = MC),
