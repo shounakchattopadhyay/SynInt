@@ -11,7 +11,7 @@ double random_gamma(double a) {
   return R::rgamma(a, 1.0);
 }
 
-// [[Rcpp:export]]
+// [[Rcpp::export]]
 double sigmasq_sampler(arma::vec R, int n) {
   
   double sigma_sq = 1.0;
