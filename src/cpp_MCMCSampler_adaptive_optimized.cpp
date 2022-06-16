@@ -17,7 +17,7 @@ double sigmasq_sampler(arma::vec R, int n) {
   double sigma_sq = 1.0;
   
   double beta_sigsq = accu(square(R))/2;
-  double alpha_sigsq = (n-1) / 2;
+  double alpha_sigsq = n / 2;
   
   sigma_sq = beta_sigsq / random_gamma(alpha_sigsq);
   return sigma_sq;
