@@ -1,43 +1,43 @@
 ### Univariate Penalty
 
-# penmatt<-function(M)
-# {
-#
-#   Amat = matrix(0, nrow = M, ncol = M)
-#
-#   Amat[1,] = c(1, rep(0, M-1))
-#
-#   for(i in 2:M)
-#   {
-#
-#     Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
-#
-#   }
-#
-#   return(t(Amat) %*% Amat)
-#
-# }
-
-### Bivariate Penalty
-
 penmatt<-function(M)
 {
 
   Amat = matrix(0, nrow = M, ncol = M)
 
   Amat[1,] = c(1, rep(0, M-1))
-  Amat[2,] = c(-2, 1, rep(0, M-2))
 
-  for(i in 3:M)
+  for(i in 2:M)
   {
 
-    Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+    Amat[i,] = c(rep(0, i-2), -1, 1, rep(0, M-i))
 
   }
 
   return(t(Amat) %*% Amat)
 
 }
+
+### Bivariate Penalty
+
+# penmatt<-function(M)
+# {
+# 
+#   Amat = matrix(0, nrow = M, ncol = M)
+# 
+#   Amat[1,] = c(1, rep(0, M-1))
+#   Amat[2,] = c(-2, 1, rep(0, M-2))
+# 
+#   for(i in 3:M)
+#   {
+# 
+#     Amat[i,] = c(rep(0, i-3), 1, -2, 1, rep(0, M-i))
+# 
+#   }
+# 
+#   return(t(Amat) %*% Amat)
+# 
+# }
 
 SIMinit<-function(y, X, Z = NULL, ME_list, IE_list, zero_ind, nugget,
                   me_integral_constraint = TRUE)
@@ -95,10 +95,10 @@ SIMinit<-function(y, X, Z = NULL, ME_list, IE_list, zero_ind, nugget,
       
       M_j = ME_list[,,j]
       
-      ME_coeff_est_mat[,j] = ginv(M_j) %*% ME_j
+      # ME_coeff_est_mat[,j] = ginv(M_j) %*% ME_j
         
-      # ME_coeff_est_mat[,j] = solve((t(M_j) %*% M_j) + (nugget * diag(nspl_ME))) %*%
-      #   t(M_j) %*% ME_j
+      ME_coeff_est_mat[,j] = solve((t(M_j) %*% M_j) + (nugget * diag(nspl_ME))) %*%
+        t(M_j) %*% ME_j
       
     }
     
@@ -413,10 +413,10 @@ SIMsampler<-function(y,
                      zero_ind = rep(1, choose(dim(X)[2], 2)),
                      me_integral_constraint = TRUE,
                      cutoff = 0.5*MC,
-                     accept_low = 0.65,
-                     accept_high = 0.9,
+                     accept_low = 0.50,
+                     accept_high = 0.60,
                      accept_scale = 0.8,
-                     precond = 1){
+                     precond = 0){
   
   library(MASS)
   library(splines)

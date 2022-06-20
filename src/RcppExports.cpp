@@ -22,6 +22,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sigmasq_sampler
+double sigmasq_sampler(arma::vec R, int n);
+RcppExport SEXP _SynInt_sigmasq_sampler(SEXP RSEXP, SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type R(RSEXP);
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    rcpp_result_gen = Rcpp::wrap(sigmasq_sampler(R, n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // maineffects_sampler
 arma::vec maineffects_sampler(arma::vec R, arma::mat X, arma::mat Psi_inv, double sigma_sq);
 RcppExport SEXP _SynInt_maineffects_sampler(SEXP RSEXP, SEXP XSEXP, SEXP Psi_invSEXP, SEXP sigma_sqSEXP) {
@@ -133,6 +145,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SynInt_random_gamma", (DL_FUNC) &_SynInt_random_gamma, 1},
+    {"_SynInt_sigmasq_sampler", (DL_FUNC) &_SynInt_sigmasq_sampler, 2},
     {"_SynInt_maineffects_sampler", (DL_FUNC) &_SynInt_maineffects_sampler, 4},
     {"_SynInt_pot_MALA", (DL_FUNC) &_SynInt_pot_MALA, 8},
     {"_SynInt_grad_MALA", (DL_FUNC) &_SynInt_grad_MALA, 8},

@@ -5,6 +5,10 @@ random_gamma <- function(a) {
     .Call(`_SynInt_random_gamma`, a)
 }
 
+sigmasq_sampler <- function(R, n) {
+    .Call(`_SynInt_sigmasq_sampler`, R, n)
+}
+
 maineffects_sampler <- function(R, X, Psi_inv, sigma_sq) {
     .Call(`_SynInt_maineffects_sampler`, R, X, Psi_inv, sigma_sq)
 }
